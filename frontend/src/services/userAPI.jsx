@@ -9,7 +9,10 @@ export const fetchUserData = async () => {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to fetch user data");
+      if (response.status === 401) {
+        throw new Error("Unauthorized - Please log in");
+      }
+      throw new Error(`Failed to fetch user data: ${response.status}`);
     }
 
     const data = await response.json();

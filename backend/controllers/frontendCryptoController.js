@@ -46,9 +46,19 @@ const getAllCryptoList = async (req, res) => {
 };
 
 const getCryptoDetailsDatabase = async (req, res) => {
-  console.log("in getCryptoDetailsDatabase");
   try {
-    const { cryptos = [], type = "default" } = req.query;
+    let { cryptos = [], type = "default" } = req.query;
+    
+    // Handle different ways axios might serialize the array
+    if (typeof cryptos === 'string') {
+      try {
+        cryptos = JSON.parse(cryptos);
+      } catch (parseError) {
+        // If JSON parsing fails, might be a different serialization
+        cryptos = [];
+      }
+    }
+    
     const now = Date.now();
 
     const cache = getCryptoCache();
@@ -69,6 +79,9 @@ const getCryptoDetailsDatabase = async (req, res) => {
     let cryptoData;
 
     if (type === "watchlist") {
+      if (!Array.isArray(cryptos)) {
+        cryptos = [];
+      }
       const watchlistIds = cryptos.map((item) => item.cryptoId);
       cryptoData = allCryptos.filter((crypto) =>
         watchlistIds.includes(crypto.id)

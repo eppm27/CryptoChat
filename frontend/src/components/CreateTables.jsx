@@ -333,15 +333,20 @@ export default function CreateTable({ inputTableType, userData, onSuccess }) {
   const [selectedData, setSelectedData] = useState();
 
   useEffect(() => {
+    if (!userData) {
+      setSelectedData(null);
+      return;
+    }
+    
     if (inputTableType === "watchlistPage" || inputTableType === "watchlist") {
-      setSelectedData(userData.watchlist);
+      setSelectedData(userData.watchlist || []);
     } else if (
       inputTableType === "walletPage" ||
       inputTableType === "walletProfile"
     ) {
-      setSelectedData(userData.wallet);
+      setSelectedData(userData.wallet || []);
     } else {
-      setSelectedData(userData.savedPrompts);
+      setSelectedData(userData.savedPrompts || []);
     }
   }, [inputTableType, userData]);
 
@@ -350,7 +355,8 @@ export default function CreateTable({ inputTableType, userData, onSuccess }) {
       if (
         (inputTableType === "watchlistPage" ||
           inputTableType === "watchlist") &&
-        selectedData
+        selectedData &&
+        selectedData.length > 0
       ) {
         let pageNewData = [];
         let dashNewData = [];
@@ -506,8 +512,8 @@ export default function CreateTable({ inputTableType, userData, onSuccess }) {
 
 CreateTable.propTypes = {
   inputTableType: PropTypes.string.isRequired,
-  editMode: PropTypes.bool.isRequired,
-  userData: PropTypes.array.isRequired,
+  editMode: PropTypes.bool,
+  userData: PropTypes.object,
   onSuccess: PropTypes.func.isRequired,
   onRowClick: PropTypes.func,
 };

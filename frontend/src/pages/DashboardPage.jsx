@@ -9,19 +9,31 @@ import { Button, Card, Skeleton, GlassCard } from "../ui/index";
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [userData, setUserData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     document.title = "Dashboard - CryptoChat";
     const loadUserData = async () => {
       try {
+        setIsLoading(true);
+        setError(null);
         const user = await fetchUserData();
         setUserData(user);
       } catch (err) {
         console.error("Error fetching user data:", err);
+        setError(err.message);
+        // If authentication fails, redirect to login
+        if (err.message.includes('Failed to fetch user data') || err.message.includes('Unauthorized')) {
+          navigate("/");
+          return;
+        }
+      } finally {
+        setIsLoading(false);
       }
     };
     loadUserData();
-  }, []);
+  }, [navigate]);
 
   const quickStartPrompts = useMemo(() => <CreateQuickStartPrompts />, []);
 
@@ -124,6 +136,48 @@ const DashboardPage = () => {
       />
     </svg>
   );
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+          <div className="text-center space-y-4">
+            <div className="space-y-3">
+              <Skeleton className="h-8 w-64 mx-auto" />
+              <Skeleton className="h-6 w-80 mx-auto" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="p-6">
+                <Skeleton className="h-12 w-full" />
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <Card className="p-8 text-center">
+            <h2 className="text-2xl font-bold text-neutral-900 mb-4">
+              Something went wrong
+            </h2>
+            <p className="text-neutral-600 mb-6">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50/30">
@@ -237,10 +291,10 @@ const DashboardPage = () => {
               {userData ? (
                 userData.watchlist?.length > 0 ? (
                   <CreateTables
-                    userId={userData._id}
-                    isWatchlist={true}
-                    userWatchlist={userData.watchlist}
-                    className="mobile-optimized"
+                    inputTableType="watchlist"
+                    userData={userData}
+                    editMode={false}
+                    onSuccess={() => {}}
                   />
                 ) : (
                   <div className="text-center py-12">
@@ -304,10 +358,10 @@ const DashboardPage = () => {
               {userData ? (
                 userData.wallet?.length > 0 ? (
                   <CreateTables
-                    userId={userData._id}
-                    isWatchlist={false}
-                    userWallet={userData.wallet}
-                    className="mobile-optimized"
+                    inputTableType="wallet"
+                    userData={userData}
+                    editMode={false}
+                    onSuccess={() => {}}
                   />
                 ) : (
                   <div className="text-center py-8">
