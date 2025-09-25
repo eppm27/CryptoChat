@@ -179,53 +179,65 @@ Respond in JSON format only:
 
   let apiDataContext = {};
   try {
-    const groupedData = await DataModel.aggregate([
-      { $sort: { date_updated: -1 } }, // Sort by date_updated in descending order
-      { $group: { _id: "$source", data: { $first: "$data" } } }, // Group by source and get the first data entry
-    ]);
-    if (groupedData && groupedData.length) {
-      groupedData.forEach((record) => {
-        if (record._id === "coinlore" && Array.isArray(record.data)) {
-          // Sanitize user-extracted coin tokens
-          const extracted = intentResult.coins.map(sanitize).filter(Boolean);
-          // Log sanitized tokens for debugging
-          console.log("Tokens after sanitization:", extracted);
-          const walletCoinNames = Array.isArray(userWallet)
-            ? userWallet
-                .map((coin) => coin?.name?.toLowerCase())
-                .filter((name) => typeof name === "string")
-            : [];
+    // Get comprehensive crypto data from the main crypto database (same as frontend)
+    const Crypto = require("../dbSchema/cryptoSchema");
+    const allCryptos = await Crypto.find({})
+      .sort({ market_cap_rank: 1 })
+      .limit(500);
 
-          if (intentResult.intent === "specific") {
-            apiDataContext[record._id] = record.data.filter((item) => {
-              const nameLower = sanitize(item.name);
-              const symbolLower = sanitize(item.symbol);
-              const idLower = sanitize(item.id);
-              // Determine specific match by substring or exact match on symbol/id
-              const isSpecificMatch =
-                intentResult.intent === "specific" &&
-                extracted.some(
-                  (token) =>
-                    nameLower?.includes(token) ||
-                    symbolLower === token ||
-                    idLower === token
-                );
-              const isWalletMatch =
-                walletCoinNames.includes(nameLower) ||
-                walletCoinNames.includes(symbolLower);
-              return isSpecificMatch || isWalletMatch;
-            });
-          } else {
-            // For general queries, include the full coinlore data
-            apiDataContext[record._id] = record.data;
-          }
-        } else {
-          apiDataContext[record._id] = record.data;
-        }
-      });
+    console.log(
+      `[LLM] Loaded ${allCryptos.length} cryptocurrencies from main database`
+    );
+
+    if (allCryptos && allCryptos.length > 0) {
+      // Sanitize user-extracted coin tokens
+      const extracted = intentResult.coins.map(sanitize).filter(Boolean);
+      console.log("Tokens after sanitization:", extracted);
+
+      const walletCoinNames = Array.isArray(userWallet)
+        ? userWallet
+            .map((coin) => coin?.name?.toLowerCase())
+            .filter((name) => typeof name === "string")
+        : [];
+
+      if (intentResult.intent === "specific") {
+        // Filter for specific cryptocurrency matches
+        apiDataContext.crypto = allCryptos.filter((crypto) => {
+          const nameLower = sanitize(crypto.name);
+          const symbolLower = sanitize(crypto.symbol);
+          const idLower = sanitize(crypto.id);
+
+          // Check for specific match by substring or exact match on symbol/id
+          const isSpecificMatch =
+            intentResult.intent === "specific" &&
+            extracted.some(
+              (token) =>
+                nameLower?.includes(token) ||
+                symbolLower === token ||
+                idLower === token
+            );
+
+          // Check for wallet match
+          const isWalletMatch =
+            walletCoinNames.includes(nameLower) ||
+            walletCoinNames.includes(symbolLower);
+
+          return isSpecificMatch || isWalletMatch;
+        });
+
+        console.log(
+          `[LLM] Filtered to ${apiDataContext.crypto.length} specific cryptocurrencies`
+        );
+      } else {
+        // For general queries, include comprehensive crypto data (top 100 for context efficiency)
+        apiDataContext.crypto = allCryptos.slice(0, 100);
+        console.log(
+          `[LLM] Using top ${apiDataContext.crypto.length} cryptocurrencies for general analysis`
+        );
+      }
     } else {
       console.error(
-        "No data found in the database – falling back to web search."
+        "No crypto data found in main database – falling back to general response."
       );
       console.log(
         "[LLM] Falling back to general response for query:",
@@ -251,14 +263,14 @@ Respond in JSON format only:
       return { text: searchText.trim(), visualizations: [] };
     }
   } catch (e) {
-    console.error("Error fetching data from database:", e);
+    console.error("Error fetching crypto data from main database:", e);
     throw e;
   }
 
   // Add check for specific coin queries with no results
   if (
     intentResult.intent === "specific" &&
-    (!apiDataContext.coinlore || apiDataContext.coinlore.length === 0)
+    (!apiDataContext.crypto || apiDataContext.crypto.length === 0)
   ) {
     console.log(
       "[LLM] No specific coin data found – providing general response for:",
@@ -312,10 +324,10 @@ Respond in JSON format only:
 
   const marketSummary = await generateMarketSummary(apiDataContext);
 
-  // For general queries, summarize coinlore data in manageable chunks to fit context limits
+  // For general queries, summarize crypto data in manageable chunks to fit context limits
   let generalSummary = marketSummary;
   if (intentResult.intent === "general") {
-    const coinData = apiDataContext.coinlore || [];
+    const coinData = apiDataContext.crypto || [];
     const chunks = chunkArray(coinData, 5);
     const summaryPromises = chunks.map((chunk) =>
       summarizeMarketDataChunk(chunk)
@@ -330,12 +342,12 @@ Respond in JSON format only:
         name: coin.name,
         quantity: coin.quantity,
         // Add current price and 24h change if available from API data
-        current_price: apiDataContext?.coinlore?.find(
+        current_price: apiDataContext?.crypto?.find(
           (c) => c.name?.toLowerCase() === coin.name?.toLowerCase()
         )?.current_price,
-        price_change_24h: apiDataContext?.coinlore?.find(
+        price_change_24h: apiDataContext?.crypto?.find(
           (c) => c.name?.toLowerCase() === coin.name?.toLowerCase()
-        )?.price_change_percentage_24h,
+        )?.price_change_percentage_24h_in_currency,
       }))
     : [];
 
@@ -346,8 +358,23 @@ Respond in JSON format only:
   if (intentResult.intent === "general") {
     systemContext += `Market Summary: ${generalSummary}`;
   } else {
-    const filtered = apiDataContext.coinlore || [];
-    systemContext += `Filtered API Data Context: ${JSON.stringify(filtered)}`;
+    const filtered = apiDataContext.crypto || [];
+    // Limit the data sent to avoid context overflow - include key metrics only
+    const filteredData = filtered.map((crypto) => ({
+      id: crypto.id,
+      name: crypto.name,
+      symbol: crypto.symbol,
+      current_price: crypto.current_price,
+      market_cap: crypto.market_cap,
+      market_cap_rank: crypto.market_cap_rank,
+      price_change_percentage_24h:
+        crypto.price_change_percentage_24h_in_currency,
+      price_change_percentage_7d: crypto.price_change_percentage_7d_in_currency,
+      total_volume: crypto.total_volume,
+    }));
+    systemContext += `Filtered Crypto Data Context: ${JSON.stringify(
+      filteredData
+    )}`;
   }
 
   // Use Gemini streaming
@@ -391,84 +418,74 @@ const generateMarketSummary = async (marketData) => {
     volatilityIndex: 0,
   };
 
-  // Combine data from all sources
-  for (const source in marketData) {
-    if (Array.isArray(marketData[source])) {
-      const coins = marketData[source];
-      summary.totalCoins += coins.length;
+  // Process crypto data (now using direct crypto database instead of multiple sources)
+  if (Array.isArray(marketData.crypto)) {
+    const coins = marketData.crypto;
+    summary.totalCoins = coins.length;
 
-      // Calculate market cap and volume totals
-      summary.totalMarketCap += coins.reduce(
-        (sum, coin) => sum + (coin.market_cap || 0),
-        0
-      );
-      summary.totalVolume += coins.reduce(
-        (sum, coin) => sum + (coin.total_volume || 0),
-        0
-      );
+    // Calculate market cap and volume totals
+    summary.totalMarketCap = coins.reduce(
+      (sum, coin) => sum + (coin.market_cap || 0),
+      0
+    );
+    summary.totalVolume = coins.reduce(
+      (sum, coin) => sum + (coin.total_volume || 0),
+      0
+    );
 
-      // Sort by performance for top gainers and losers
-      const sortedByPerformance = [...coins]
-        .filter((coin) => typeof coin.price_change_percentage_24h === "number")
-        .sort(
-          (a, b) =>
-            (b.price_change_percentage_24h || 0) -
-            (a.price_change_percentage_24h || 0)
-        );
-
-      // Top 3 performers
-      summary.topPerformers.push(
-        ...sortedByPerformance.slice(0, 3).map((coin) => ({
-          name: coin.name,
-          symbol: coin.symbol?.toUpperCase(),
-          marketCap: coin.market_cap,
-          priceChange: coin.price_change_percentage_24h,
-          currentPrice: coin.current_price,
-        }))
+    // Sort by performance for top gainers and losers
+    const sortedByPerformance = [...coins]
+      .filter(
+        (coin) =>
+          typeof coin.price_change_percentage_24h_in_currency === "number"
+      )
+      .sort(
+        (a, b) =>
+          (b.price_change_percentage_24h_in_currency || 0) -
+          (a.price_change_percentage_24h_in_currency || 0)
       );
 
-      // Top 3 losers
-      summary.topLosers.push(
-        ...sortedByPerformance
-          .slice(-3)
-          .reverse()
-          .map((coin) => ({
-            name: coin.name,
-            symbol: coin.symbol?.toUpperCase(),
-            marketCap: coin.market_cap,
-            priceChange: coin.price_change_percentage_24h,
-            currentPrice: coin.current_price,
-          }))
-      );
+    // Top 3 performers
+    summary.topPerformers = sortedByPerformance.slice(0, 3).map((coin) => ({
+      name: coin.name,
+      symbol: coin.symbol?.toUpperCase(),
+      marketCap: coin.market_cap,
+      priceChange: coin.price_change_percentage_24h_in_currency,
+      currentPrice: coin.current_price,
+    }));
 
-      // Calculate overall trend and volatility
-      const changes = coins
-        .map((coin) => coin.price_change_percentage_24h)
-        .filter((change) => typeof change === "number");
+    // Top 3 losers
+    summary.topLosers = sortedByPerformance
+      .slice(-3)
+      .reverse()
+      .map((coin) => ({
+        name: coin.name,
+        symbol: coin.symbol?.toUpperCase(),
+        marketCap: coin.market_cap,
+        priceChange: coin.price_change_percentage_24h_in_currency,
+        currentPrice: coin.current_price,
+      }));
 
-      if (changes.length) {
-        const avgChange = changes.reduce((a, b) => a + b, 0) / changes.length;
-        summary.overallTrend += avgChange;
+    // Calculate overall trend and volatility
+    const changes = coins
+      .map((coin) => coin.price_change_percentage_24h_in_currency)
+      .filter((change) => typeof change === "number");
 
-        // Calculate volatility (standard deviation of price changes)
-        const variance =
-          changes.reduce(
-            (sum, change) => sum + Math.pow(change - avgChange, 2),
-            0
-          ) / changes.length;
-        summary.volatilityIndex += Math.sqrt(variance);
-      }
+    if (changes.length) {
+      const avgChange = changes.reduce((a, b) => a + b, 0) / changes.length;
+      summary.overallTrend = avgChange;
+
+      // Calculate volatility (standard deviation of price changes)
+      const variance =
+        changes.reduce(
+          (sum, change) => sum + Math.pow(change - avgChange, 2),
+          0
+        ) / changes.length;
+      summary.volatilityIndex = Math.sqrt(variance);
     }
   }
 
-  // Deduplicate and limit results
-  summary.topPerformers = Array.from(
-    new Map(summary.topPerformers.map((coin) => [coin.name, coin])).values()
-  ).slice(0, 3);
-
-  summary.topLosers = Array.from(
-    new Map(summary.topLosers.map((coin) => [coin.name, coin])).values()
-  ).slice(0, 3);
+  // Limit results to top 3 (already done in processing above)
 
   // Generate intelligent market summary
   const marketTrend =

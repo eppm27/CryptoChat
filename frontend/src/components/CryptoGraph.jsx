@@ -28,23 +28,46 @@ const CryptoGraph = ({ cryptoId }) => {
   const [currentData, setCurrentData] = useState(null);
   const [graphData, setGraphData] = useState("price");
   const [graphType, setGraphType] = useState("line");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchGraphData = async () => {
+      // Use cached data if available
       if (graphDataCache[selectedPeriod]) {
         setCurrentData(graphDataCache[selectedPeriod]);
+        setIsLoading(false);
+        setError(null);
+        return;
       }
 
+      setIsLoading(true);
+      setError(null);
+
       try {
+        console.log(
+          `🔄 Fetching graph data for ${cryptoId} (${selectedPeriod} days)`
+        );
         const graphData = await fetchCryptoGraphData(cryptoId, selectedPeriod);
+
+        if (!graphData || (!graphData.priceData && !graphData.ohlcData)) {
+          throw new Error(`No graph data available for ${cryptoId}`);
+        }
+
         setGraphDataCache((prev) => ({
           ...prev,
           [selectedPeriod]: graphData,
         }));
         setCurrentData(graphData);
+        console.log(`✅ Successfully loaded graph data for ${cryptoId}`);
       } catch (error) {
-        console.error("Error:", error);
-        message.error(error.message || "Failed to fetch crypto graph data");
+        console.error(`❌ Error fetching graph data for ${cryptoId}:`, error);
+        setError(error.message || "Failed to fetch crypto graph data");
+        message.error(
+          `Failed to load ${cryptoId} graph data: ${error.message}`
+        );
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -332,13 +355,56 @@ const CryptoGraph = ({ cryptoId }) => {
           </div>
         </div>
 
-        {currentData && (
+        {isLoading ? (
+          <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading {cryptoId} chart data...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-96 bg-red-50 rounded-lg border border-red-200">
+            <div className="text-center p-6">
+              <div className="text-red-500 mb-2">
+                <svg
+                  className="w-12 h-12 mx-auto"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-red-800 mb-2">
+                Chart Data Unavailable
+              </h3>
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : currentData ? (
           <Chart
             options={getGraphOptions()}
             series={getGraphOptions().series}
             type={graphType === "candlestick" ? "candlestick" : "area"}
             height={350}
           />
+        ) : (
+          <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg">
+            <p className="text-gray-600">
+              No chart data available for {cryptoId}
+            </p>
+          </div>
         )}
 
         <div className="text-right">

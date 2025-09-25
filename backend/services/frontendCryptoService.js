@@ -5,16 +5,21 @@ const REFRESH_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
 
 const { setCryptoCache } = require("../cache");
 
-const fetchWithRetry = async (url, retries = 5, delay = 2000) => {
+const fetchWithRetry = async (url, retries = 5, delay = 2000, headers = {}) => {
   try {
-    const response = await axios.get(url);
+    console.log(`🌐 Fetching: ${url}`);
+    const response = await axios.get(url, { 
+      headers,
+      timeout: 15000 // 15 second timeout
+    });
     return response;
   } catch (error) {
     if (error.response && error.response.status === 429 && retries > 0) {
+      console.log(`⏳ Rate limited, waiting ${delay}ms before retry (${retries} retries left)`);
       await new Promise((resolve) => setTimeout(resolve, delay));
-      return fetchWithRetry(url, retries - 1, delay * 2);
+      return fetchWithRetry(url, retries - 1, delay * 2, headers);
     } else {
-      console.error(`Error fetching data: ${error.message}`);
+      console.error(`❌ Error fetching data from ${url}: ${error.message}`);
       return null;
     }
   }
@@ -308,56 +313,134 @@ const updateCryptoInfoMongo = async () => {
   }
 };
 
+// Import crypto availability service
+const {
+  ensurePopularCryptosAvailable,
+} = require("./cryptoAvailabilityService");
+
+// Initialize popular cryptocurrencies on startup
+const initializeCryptoService = async () => {
+  console.log("🚀 Initializing crypto service...");
+
+  // Ensure popular cryptocurrencies (including Dogecoin) are available
+  await ensurePopularCryptosAvailable();
+
+  // Then run the main update
+  await updateCryptoInfoMongo();
+
+  console.log("✅ Crypto service initialization complete");
+};
+
+// Set up periodic updates
 setInterval(updateCryptoInfoMongo, REFRESH_INTERVAL);
 
-updateCryptoInfoMongo();
+// Initialize the service
+initializeCryptoService().catch((error) => {
+  console.error("❌ Error during crypto service initialization:", error);
+});
 
 const fetchCryptoGraphData = async (cryptoId, selectedPeriod = "7") => {
   try {
-    const response = await axios.get(
-      `https://api.coingecko.com/api/v3/coins/${cryptoId}/market_chart`,
-      {
-        params: {
-          vs_currency: "aud",
-          days: selectedPeriod,
-        },
-        headers: {
-          "x-cg-demo-api-key": process.env.COINGECKO_API_KEY,
-        },
-      }
+    console.log(
+      `📊 Fetching graph data for ${cryptoId} (${selectedPeriod} days)`
+    );
+
+    // Add delay to avoid rate limiting
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const headers = {};
+    if (process.env.COINGECKO_API_KEY) {
+      headers["x-cg-demo-api-key"] = process.env.COINGECKO_API_KEY;
+    }
+
+    const response = await fetchWithRetry(
+      `https://api.coingecko.com/api/v3/coins/${cryptoId}/market_chart?vs_currency=aud&days=${selectedPeriod}`,
+      3,
+      3000, // Longer delay between retries
+      headers
+    );
+
+    if (!response || !response.data) {
+      console.error(`❌ No graph data returned for ${cryptoId}`);
+      throw new Error(`No graph data available for ${cryptoId}`);
+    }
+
+    const { prices, market_caps } = response.data;
+
+    if (!prices || !Array.isArray(prices) || prices.length === 0) {
+      console.error(`❌ Invalid price data for ${cryptoId}:`, {
+        prices: prices?.length,
+      });
+      throw new Error(`Invalid price data for ${cryptoId}`);
+    }
+
+    console.log(
+      `✅ Successfully fetched graph data for ${cryptoId}: ${prices.length} price points`
     );
 
     return {
-      priceData: response.data.prices,
-      marketCapData: response.data.market_caps,
+      priceData: prices,
+      marketCapData: market_caps || [],
     };
   } catch (error) {
-    console.error("Error fetching price graph data:", error);
-    throw new Error("Error fetching crypto graph data");
+    console.error(
+      `❌ Error fetching price graph data for ${cryptoId}:`,
+      error.message
+    );
+    throw new Error(
+      `Error fetching crypto graph data for ${cryptoId}: ${error.message}`
+    );
   }
 };
 
 const fetchCryptoCandleData = async (cryptoId, selectedPeriod = "7") => {
   try {
-    const response = await axios.get(
-      `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc`,
-      {
-        params: {
-          vs_currency: "aud",
-          days: selectedPeriod,
-        },
-        headers: {
-          "x-cg-demo-api-key": process.env.COINGECKO_API_KEY,
-        },
-      }
+    console.log(
+      `🕯️ Fetching candle data for ${cryptoId} (${selectedPeriod} days)`
+    );
+
+    // Add delay to avoid rate limiting
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const headers = {};
+    if (process.env.COINGECKO_API_KEY) {
+      headers["x-cg-demo-api-key"] = process.env.COINGECKO_API_KEY;
+    }
+
+    const response = await fetchWithRetry(
+      `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=aud&days=${selectedPeriod}`,
+      3,
+      3000, // Longer delay between retries
+      headers
+    );
+
+    if (!response || !response.data) {
+      console.error(`❌ No candle data returned for ${cryptoId}`);
+      throw new Error(`No candle data available for ${cryptoId}`);
+    }
+
+    const ohlcData = response.data;
+
+    if (!Array.isArray(ohlcData)) {
+      console.error(`❌ Invalid OHLC data for ${cryptoId}:`, typeof ohlcData);
+      throw new Error(`Invalid OHLC data format for ${cryptoId}`);
+    }
+
+    console.log(
+      `✅ Successfully fetched candle data for ${cryptoId}: ${ohlcData.length} candles`
     );
 
     return {
-      ohlcData: response.data,
+      ohlcData: ohlcData,
     };
   } catch (error) {
-    console.error("Error fetching price candle data:", error);
-    throw new Error("Error fetching candle graph data");
+    console.error(
+      `❌ Error fetching price candle data for ${cryptoId}:`,
+      error.message
+    );
+    throw new Error(
+      `Error fetching candle graph data for ${cryptoId}: ${error.message}`
+    );
   }
 };
 

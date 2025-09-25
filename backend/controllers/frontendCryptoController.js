@@ -1,15 +1,20 @@
 const {
   fetchCryptoGraphData,
   fetchCryptoCandleData,
-} = require('../services/frontendCryptoService');
+} = require("../services/frontendCryptoService");
 
-const Crypto = require('../dbSchema/cryptoSchema');
+const {
+  validateCryptoForCharts,
+  ensurePopularCryptosAvailable,
+} = require("../services/cryptoAvailabilityService");
+
+const Crypto = require("../dbSchema/cryptoSchema");
 
 const {
   getCryptoCache,
   getLastCacheTime,
   setCryptoCache,
-} = require('../cache');
+} = require("../cache");
 
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
 
@@ -21,30 +26,29 @@ const getAllCryptoList = async (req, res) => {
 
   // check if cached data is still valid
   if (cache && now - lastFetched < CACHE_TTL) {
-    console.log('✅ Serving crypto list from cache');
+    console.log("✅ Serving crypto list from cache");
     return res.json(cache);
   }
 
   // if not - fetch for fresh data from MongoDB
   try {
-    console.log('Fetching fresh crypto list from MongoDB...');
+    console.log("Fetching fresh crypto list from MongoDB...");
     const data = await Crypto.find({}); // here the crypto is being fetched from our database
 
     setCryptoCache(data);
-    console.log('Fetched from DB and stored in cache');
+    console.log("Fetched from DB and stored in cache");
 
     return res.json(data);
   } catch (error) {
-    console.error('❌ Error fetching crypto list:', error);
-    return res.status(500).json({ error: 'Failed to load crypto data' });
+    console.error("❌ Error fetching crypto list:", error);
+    return res.status(500).json({ error: "Failed to load crypto data" });
   }
 };
 
-
 const getCryptoDetailsDatabase = async (req, res) => {
-  console.log('in getCryptoDetailsDatabase');
+  console.log("in getCryptoDetailsDatabase");
   try {
-    const { cryptos = [], type = "default" } = req.query; 
+    const { cryptos = [], type = "default" } = req.query;
     const now = Date.now();
 
     const cache = getCryptoCache();
@@ -54,9 +58,9 @@ const getCryptoDetailsDatabase = async (req, res) => {
     // check if cache data is still valid - if not refetch
     if (cache && now - lastFetched < CACHE_TTL) {
       allCryptos = cache;
-      console.log('✅ cryptoDetails served from cache');
+      console.log("✅ cryptoDetails served from cache");
     } else {
-      console.log('Fetching cryptoDetails from DB...');
+      console.log("Fetching cryptoDetails from DB...");
       allCryptos = await Crypto.find({});
 
       setCryptoCache(allCryptos);
@@ -65,11 +69,12 @@ const getCryptoDetailsDatabase = async (req, res) => {
     let cryptoData;
 
     if (type === "watchlist") {
-      const watchlistIds = cryptos.map(item => item.cryptoId);
-      cryptoData = allCryptos.filter(crypto => watchlistIds.includes(crypto.id));
-
+      const watchlistIds = cryptos.map((item) => item.cryptoId);
+      cryptoData = allCryptos.filter((crypto) =>
+        watchlistIds.includes(crypto.id)
+      );
     } else if (type === "cryptoDetails") {
-      cryptoData = allCryptos.find(term => term.id === cryptos);
+      cryptoData = allCryptos.find((term) => term.id === cryptos);
     } else if (cryptos.length === 0 && type === "default") {
       // default - meaning it would be giving everything and ordered for the explore page
       // cryptoData = allCryptos.sort((a, b) => a.market_cap_rank - b.market_cap_rank);
@@ -80,12 +85,12 @@ const getCryptoDetailsDatabase = async (req, res) => {
     res.json(cryptoData);
   } catch (error) {
     console.error(
-      'Error fetching crypto details from database - cache:',
+      "Error fetching crypto details from database - cache:",
       error
     );
     res
       .status(500)
-      .json({ error: 'Failed to fetch crypto details from databse - cache' });
+      .json({ error: "Failed to fetch crypto details from databse - cache" });
   }
 };
 
@@ -96,20 +101,47 @@ const getAllCryptosForCache = async (req, res) => {
     return res.json(allCryptos);
   } catch (error) {
     console.error(
-      'Error fetching all crypto details for cache from database:',
+      "Error fetching all crypto details for cache from database:",
       error
     );
     res.status(500).json({
-      error: 'Failed to fetch all crypto details for cache from databse',
+      error: "Failed to fetch all crypto details for cache from databse",
     });
   }
 };
 
 const getCryptoGraphData = async (req, res) => {
   const { id: cryptoId } = req.params;
-  const { period = '7' } = req.query;
+  const { period = "7" } = req.query;
 
   try {
+    console.log(`📊 Graph data request for: ${cryptoId} (${period} days)`);
+
+    // Validate that the cryptocurrency exists and can provide chart data
+    const validation = await validateCryptoForCharts(cryptoId);
+
+    if (!validation.exists) {
+      console.error(`❌ Cryptocurrency not found: ${cryptoId}`);
+      return res.status(404).json({
+        message: `Cryptocurrency '${cryptoId}' not found`,
+        suggestion: "Please check the cryptocurrency ID and try again",
+      });
+    }
+
+    if (!validation.canFetchCharts) {
+      console.error(`❌ Chart data not available for: ${cryptoId}`);
+      return res.status(400).json({
+        message: `Chart data not available for '${cryptoId}'`,
+        error: validation.error,
+      });
+    }
+
+    console.log(
+      `✅ Crypto validation passed for ${cryptoId}: ${
+        validation.name
+      } (${validation.symbol?.toUpperCase()})`
+    );
+
     const [lineData, candleData] = await Promise.all([
       fetchCryptoGraphData(cryptoId, period),
       fetchCryptoCandleData(cryptoId, period),
@@ -118,16 +150,30 @@ const getCryptoGraphData = async (req, res) => {
     const allData = {
       ...lineData,
       ...candleData,
+      cryptoInfo: {
+        id: cryptoId,
+        name: validation.name,
+        symbol: validation.symbol,
+        inDatabase: validation.inDatabase,
+      },
     };
 
+    console.log(`✅ Successfully returning graph data for ${cryptoId}`);
     res.json(allData);
   } catch (error) {
-    console.error('Error fetching crypto data:', error.message);
-    res.status(500).json({ message: 'Failed to fetch crypto data' });
+    console.error(
+      `❌ Error fetching crypto graph data for ${cryptoId}:`,
+      error.message
+    );
+    res.status(500).json({
+      message: `Failed to fetch crypto graph data for '${cryptoId}'`,
+      error: error.message,
+      cryptoId: cryptoId,
+    });
   }
 };
 
-const CryptoIndicator = require('../dbSchema/cryptoIndicatorSchema');
+const CryptoIndicator = require("../dbSchema/cryptoIndicatorSchema");
 
 const getCryptoIndicatorGraph = async (req, res) => {
   const { id: cryptoId } = req.params;
@@ -135,15 +181,15 @@ const getCryptoIndicatorGraph = async (req, res) => {
   try {
     const analysis = await CryptoIndicator.findOne({
       cryptoId,
-      indicator: 'RSI',
+      indicator: "RSI",
     })
-      .select('data symbol -_id')
+      .select("data symbol -_id")
       .lean();
 
     if (!analysis) {
       return res.status(404).json({
         success: false,
-        message: 'RSI data not found',
+        message: "RSI data not found",
       });
     }
 
@@ -161,10 +207,30 @@ const getCryptoIndicatorGraph = async (req, res) => {
       rsiData,
     });
   } catch (error) {
-    console.error('Error fetching RSI data:', error);
+    console.error("Error fetching RSI data:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch RSI data',
+      message: "Failed to fetch RSI data",
+    });
+  }
+};
+
+const getCryptoChartSupport = async (req, res) => {
+  try {
+    const {
+      getCryptosWithChartSupport,
+    } = require("../services/cryptoAvailabilityService");
+    const supportedCryptos = await getCryptosWithChartSupport();
+
+    res.json({
+      count: supportedCryptos.length,
+      cryptocurrencies: supportedCryptos,
+    });
+  } catch (error) {
+    console.error("Error fetching cryptos with chart support:", error);
+    res.status(500).json({
+      message: "Failed to fetch cryptocurrencies with chart support",
+      error: error.message,
     });
   }
 };
@@ -175,4 +241,5 @@ module.exports = {
   getCryptoDetailsDatabase,
   getAllCryptosForCache,
   getCryptoIndicatorGraph,
+  getCryptoChartSupport,
 };
