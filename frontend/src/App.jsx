@@ -9,7 +9,7 @@ import SavedPage from "./pages/SavedPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
-import Header from "./components/Header.jsx";
+import Navigation from "./components/Navigation.jsx";
 import ProfilePage from "./pages/ProfilePage";
 import EditProfile from "./pages/EditProfile";
 import WalletPage from "./pages/WalletPage";
@@ -23,7 +23,6 @@ function App() {
   useEffect(() => {
     document.title = "CryptoChat";
   }, []);
-  // if app has a name then login page name would not show
 
   return (
     <BrowserRouter>
@@ -35,15 +34,18 @@ function App() {
 
 function Main() {
   const location = useLocation();
-  const noHeaderRoutes = ["/", "/register", "/forgot"];
+  const noNavRoutes = ["/", "/register", "/forgot"];
 
   return (
-    <div>
-      {!noHeaderRoutes.includes(location.pathname) && <Header />}
-      {/* <h1 className="text-3xl font-bold text-red-500 underline text-center">From app page.</h1> */}
+    <div className="min-h-screen bg-neutral-50">
+      {!noNavRoutes.includes(location.pathname) && <Navigation />}
 
       <div
-        className={!noHeaderRoutes.includes(location.pathname) ? "pt-20" : ""}
+        className={`${
+          !noNavRoutes.includes(location.pathname) 
+            ? "pt-16 pb-20 md:pt-20 md:pb-4" 
+            : ""
+        }`}
       >
         <Routes>
           <Route path="/" element={<LoginPage />} />

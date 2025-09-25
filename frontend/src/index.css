@@ -1,3 +1,241 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-neutral-50 text-neutral-900 font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-neutral-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-neutral-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-neutral-400;
+  }
+}
+
+@layer components {
+  /* Mobile-first responsive text */
+  .text-responsive-sm {
+    @apply text-sm md:text-base;
+  }
+
+  .text-responsive-base {
+    @apply text-base md:text-lg;
+  }
+
+  .text-responsive-lg {
+    @apply text-lg md:text-xl;
+  }
+
+  .text-responsive-xl {
+    @apply text-xl md:text-2xl;
+  }
+
+  .text-responsive-2xl {
+    @apply text-2xl md:text-3xl;
+  }
+
+  /* Mobile-friendly containers */
+  .container-mobile {
+    @apply w-full max-w-sm mx-auto px-4 sm:max-w-md sm:px-6 md:max-w-lg lg:max-w-7xl lg:px-8;
+  }
+
+  /* Improved focus states */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-white;
+  }
+
+  /* Glass morphism effect */
+  .glass {
+    @apply backdrop-blur-md bg-white/70 border border-white/20;
+  }
+
+  .glass-dark {
+    @apply backdrop-blur-md bg-neutral-900/70 border border-neutral-700/20;
+  }
+
+  /* Improved card shadows */
+  .card-shadow {
+    @apply shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  .card-shadow-lg {
+    @apply shadow-md hover:shadow-lg transition-shadow duration-200;
+  }
+
+  /* Mobile navigation safe area */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent;
+  }
+
+  /* Loading shimmer effect */
+  .shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  /* Price change animations */
+  .price-up {
+    @apply text-success-600 bg-success-50;
+    animation: pulseGreen 0.5s ease-in-out;
+  }
+
+  .price-down {
+    @apply text-danger-600 bg-danger-50;
+    animation: pulseRed 0.5s ease-in-out;
+  }
+
+  @keyframes pulseGreen {
+    0%,
+    100% {
+      background-color: rgb(240 253 244);
+    }
+    50% {
+      background-color: rgb(220 252 231);
+    }
+  }
+
+  @keyframes pulseRed {
+    0%,
+    100% {
+      background-color: rgb(254 242 242);
+    }
+    50% {
+      background-color: rgb(254 226 226);
+    }
+  }
+
+  /* Mobile table optimizations */
+  .mobile-table {
+    @apply block md:table;
+  }
+
+  .mobile-table thead {
+    @apply hidden md:table-header-group;
+  }
+
+  .mobile-table tbody {
+    @apply block md:table-row-group;
+  }
+
+  .mobile-table tr {
+    @apply block md:table-row border border-neutral-200 rounded-lg mb-2 md:mb-0 md:border-none md:rounded-none;
+  }
+
+  .mobile-table td {
+    @apply block md:table-cell px-4 py-2 md:px-6 md:py-4 text-right md:text-left;
+  }
+
+  .mobile-table td:before {
+    content: attr(data-label) ": ";
+    @apply font-semibold text-neutral-600 md:hidden float-left clear-both;
+  }
+}
+
+@layer utilities {
+  /* Touch-friendly sizes */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Enhanced mobile breakpoints */
+  .mobile-only {
+    @apply block md:hidden;
+  }
+
+  .desktop-only {
+    @apply hidden md:block;
+  }
+
+  /* Animation utilities */
+  .animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out forwards;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Responsive spacing */
+  .space-y-responsive {
+    @apply space-y-4 md:space-y-6;
+  }
+
+  .space-x-responsive {
+    @apply space-x-2 md:space-x-4;
+  }
+
+  /* Better focus indicators for accessibility */
+  .focus-visible-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
+  }
+}
