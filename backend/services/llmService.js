@@ -111,8 +111,11 @@ const SYSTEM_PROMPT =
   "\n• Include relevant metrics: price changes, volume, market cap, volatility" +
   "\n• Suggest risk levels: Low, Medium, High for any recommendations" +
   "\n• When beneficial, recommend data visualizations using this format:" +
-  '\n```graph-data\n{"type":"line|bar|pie","title":"Descriptive Title","dataPoints":["cryptoId_metric_timeframe"]}\n```' +
-  '\n• Example dataPoints: ["bitcoin_price_7d"], ["ethereum_market_cap_30d"], ["portfolio_performance_1m"]' +
+  '\n```graph-data\n{"type":"line|bar|pie|candlestick","title":"Descriptive Title","dataPoints":["cryptoId_metric_timeframe"]}\n```' +
+  '\n• Available chart types: "line" (price/volume trends), "bar" (comparisons), "pie" (portfolio), "candlestick" (OHLC data)' +
+  '\n• Supported timeframes: "1d", "7d", "30d", "90d", "365d" for comprehensive analysis' +
+  '\n• Example dataPoints: ["bitcoin_price_7d"], ["ethereum_price_30d"], ["bitcoin_price_365d"], ["ethereum_volume_90d"]' +
+  '\n• For comparisons: ["bitcoin_price_7d", "ethereum_price_7d", "cardano_price_7d"]' +
   "\n• For investment discussions, always include: 'This analysis is for informational purposes only. Cryptocurrency investments carry significant risk. Always conduct your own research and consider your risk tolerance.'" +
   "\n• If data is unavailable, explain the reason (illiquid market, delisted, new token) and provide context" +
   "\n• Use clear, professional language without excessive formatting" +

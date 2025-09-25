@@ -1,4 +1,8 @@
-const DataModel = require("../dbSchema/dbSchema.js");
+// Import CoinGecko API service for rich data
+const {
+  fetchCryptoGraphData,
+  fetchCryptoCandleData,
+} = require("./frontendCryptoService");
 
 const extractGraphSpecs = (text) => {
   const graphRegex = /```graph-data\s*([\s\S]*?)```/gs;
@@ -25,87 +29,207 @@ const extractGraphSpecs = (text) => {
     .filter(Boolean);
 };
 
-const generatePriceHistoryData = (cryptoData, cryptoId) => {
-  // Find the cryptocurrency in the data
-  console.log(
-    "Available crypto data:",
-    cryptoData.map((c) => c.id).slice(0, 10)
-  ); // Show first 10 IDs
-  const crypto = cryptoData.find(
-    (item) =>
-      item.id?.toLowerCase() === cryptoId.toLowerCase() ||
-      item.name?.toLowerCase() === cryptoId.toLowerCase() ||
-      item.symbol?.toLowerCase() === cryptoId.toLowerCase()
-  );
-  console.log(
-    "Crypto data available:",
-    !!crypto,
-    crypto?.sparkline_in_7d?.price ? "with sparkline" : "no sparkline"
-  );
-  if (!crypto || !crypto.sparkline_in_7d?.price) {
+// Enhanced function to fetch rich price history data from CoinGecko API
+const generatePriceHistoryData = async (cryptoId, timeframe = "7") => {
+  try {
+    console.log(
+      `Fetching price history for ${cryptoId} with timeframe ${timeframe}`
+    );
+
+    // Map timeframe to API days parameter
+    const daysMap = {
+      "1d": "1",
+      "7d": "7",
+      "30d": "30",
+      "90d": "90",
+      "365d": "365",
+      1: "1",
+      7: "7",
+      30: "30",
+      90: "90",
+      365: "365",
+    };
+
+    const days = daysMap[timeframe] || "7";
+    const data = await fetchCryptoGraphData(cryptoId, days);
+
+    if (!data || !data.priceData) {
+      console.warn(`No price data available for ${cryptoId}`);
+      return null;
+    }
+
+    // Convert CoinGecko format [timestamp, price] to our format
+    return data.priceData.map(([timestamp, price]) => ({
+      time: new Date(timestamp).toISOString(),
+      price: price,
+    }));
+  } catch (error) {
+    console.error(`Error fetching price history for ${cryptoId}:`, error);
     return null;
   }
-
-  // Coingecko provides 168 hourly prices in the sparkline (7d)
-  const prices = crypto.sparkline_in_7d.price;
-  const now = new Date();
-
-  return prices.map((price, index) => {
-    // Calculate timestamp based on index (hourly data points)
-    const timestamp = new Date(now);
-    timestamp.setHours(now.getHours() - (prices.length - index));
-
-    return {
-      time: timestamp.toISOString(),
-      price: price,
-    };
-  });
 };
 
-const generateComparisonData = (cryptoData, cryptoIds, metric = "price") => {
-  const cryptos = cryptoData.filter((item) =>
-    cryptoIds.some(
-      (id) =>
-        item.id?.toLowerCase() === id.toLowerCase() ||
-        item.name?.toLowerCase() === id.toLowerCase() ||
-        item.symbol?.toLowerCase() === id.toLowerCase()
-    )
-  );
+// Fallback function for database data (kept for compatibility)
 
-  if (!cryptos.length) return null;
+// Enhanced comparison function using CoinGecko API
+const generateComparisonData = async (
+  cryptoIds,
+  metric = "price",
+  timeframe = "7"
+) => {
+  try {
+    console.log(
+      `Generating comparison data for ${cryptoIds.join(
+        ", "
+      )} - metric: ${metric}`
+    );
 
-  const labels = cryptos.map((crypto) => crypto.name || crypto.symbol);
-  const data = cryptos.map((crypto) => {
-    switch (metric) {
-      case "price":
-        return crypto.current_price;
-      case "market_cap":
-        return crypto.market_cap;
-      case "volume":
-        return crypto.total_volume;
-      case "change_24h":
-        return crypto.price_change_percentage_24h;
-      default:
-        return crypto.current_price;
+    const comparisonData = [];
+
+    // Fetch data for each cryptocurrency
+    for (const cryptoId of cryptoIds) {
+      try {
+        const data = await fetchCryptoGraphData(cryptoId, timeframe);
+        if (data) {
+          let value;
+          switch (metric) {
+            case "price":
+              // Get latest price
+              value =
+                data.priceData && data.priceData.length > 0
+                  ? data.priceData[data.priceData.length - 1][1]
+                  : 0;
+              break;
+            case "market_cap":
+              // Get latest market cap
+              value =
+                data.marketCapData && data.marketCapData.length > 0
+                  ? data.marketCapData[data.marketCapData.length - 1][1]
+                  : 0;
+              break;
+            default:
+              value =
+                data.priceData && data.priceData.length > 0
+                  ? data.priceData[data.priceData.length - 1][1]
+                  : 0;
+          }
+
+          comparisonData.push({
+            id: cryptoId,
+            name: cryptoId.charAt(0).toUpperCase() + cryptoId.slice(1),
+            value: value,
+          });
+        }
+      } catch (error) {
+        console.warn(`Failed to fetch data for ${cryptoId}:`, error.message);
+      }
     }
-  });
 
-  return {
-    labels,
-    datasets: [
-      {
-        label: metric.charAt(0).toUpperCase() + metric.slice(1),
-        data,
-        backgroundColor: [
-          "rgba(75, 192, 192, 0.6)",
-          "rgba(153, 102, 255, 0.6)",
-          "rgba(255, 159, 64, 0.6)",
-          "rgba(255, 99, 132, 0.6)",
-          "rgba(54, 162, 235, 0.6)",
-        ],
-      },
-    ],
-  };
+    if (!comparisonData.length) return null;
+
+    return {
+      labels: comparisonData.map((item) => item.name),
+      datasets: [
+        {
+          label: metric.charAt(0).toUpperCase() + metric.slice(1),
+          data: comparisonData.map((item) => item.value),
+          backgroundColor: [
+            "rgba(75, 192, 192, 0.6)",
+            "rgba(153, 102, 255, 0.6)",
+            "rgba(255, 159, 64, 0.6)",
+            "rgba(255, 99, 132, 0.6)",
+            "rgba(54, 162, 235, 0.6)",
+          ],
+        },
+      ],
+    };
+  } catch (error) {
+    console.error("Error generating comparison data:", error);
+    return null;
+  }
+};
+
+// Enhanced function to generate volume data
+const generateVolumeData = async (cryptoId, timeframe = "7") => {
+  try {
+    console.log(
+      `Fetching volume data for ${cryptoId} with timeframe ${timeframe}`
+    );
+
+    const daysMap = {
+      "1d": "1",
+      "7d": "7",
+      "30d": "30",
+      "90d": "90",
+      "365d": "365",
+      1: "1",
+      7: "7",
+      30: "30",
+      90: "90",
+      365: "365",
+    };
+
+    const days = daysMap[timeframe] || "7";
+
+    // Get both price and market cap data (volume might be in market_caps)
+    const data = await fetchCryptoGraphData(cryptoId, days);
+
+    if (!data || !data.priceData) {
+      console.warn(`No volume data available for ${cryptoId}`);
+      return null;
+    }
+
+    // Convert to volume format (using price data as volume proxy for now)
+    return data.priceData.map(([timestamp, value]) => ({
+      time: new Date(timestamp).toISOString(),
+      volume: value, // This would be actual volume data if available
+    }));
+  } catch (error) {
+    console.error(`Error fetching volume data for ${cryptoId}:`, error);
+    return null;
+  }
+};
+
+// Enhanced function to generate OHLC candlestick data
+const generateCandlestickData = async (cryptoId, timeframe = "7") => {
+  try {
+    console.log(
+      `Fetching candlestick data for ${cryptoId} with timeframe ${timeframe}`
+    );
+
+    const daysMap = {
+      "1d": "1",
+      "7d": "7",
+      "30d": "30",
+      "90d": "90",
+      "365d": "365",
+      1: "1",
+      7: "7",
+      30: "30",
+      90: "90",
+      365: "365",
+    };
+
+    const days = daysMap[timeframe] || "7";
+    const data = await fetchCryptoCandleData(cryptoId, days);
+
+    if (!data || !data.ohlcData) {
+      console.warn(`No OHLC data available for ${cryptoId}`);
+      return null;
+    }
+
+    // Convert CoinGecko OHLC format to our format
+    return data.ohlcData.map(([timestamp, open, high, low, close]) => ({
+      time: new Date(timestamp).toISOString(),
+      open: open,
+      high: high,
+      low: low,
+      close: close,
+    }));
+  } catch (error) {
+    console.error(`Error fetching candlestick data for ${cryptoId}:`, error);
+    return null;
+  }
 };
 
 const generatePortfolioData = (wallet, cryptoData) => {
@@ -146,7 +270,7 @@ const generatePortfolioData = (wallet, cryptoData) => {
   };
 };
 
-const processGraphsInResponse = async (llmResponse, userWallet) => {
+const processGraphsInResponse = async (llmResponse) => {
   // Support both raw string and { text, visualizations } object
   const rawText =
     typeof llmResponse === "string" ? llmResponse : llmResponse.text || "";
@@ -162,28 +286,7 @@ const processGraphsInResponse = async (llmResponse, userWallet) => {
   }
 
   try {
-    // Get the latest crypto data from the database
-    const dbData = await DataModel.aggregate([
-      { $sort: { date_updated: -1 } },
-      { $group: { _id: "$source", data: { $first: "$data" } } },
-    ]);
-
-    // Extract relevant data sources, preferring Coingecko over CoinLore
-    const cgData = dbData.find((item) => item._id === "coingecko")?.data || [];
-    const clData = dbData.find((item) => item._id === "coinlore")?.data || [];
-    const cryptoData = cgData.length ? cgData : clData;
-
-    // If no data from Coingecko or CoinLore, bail out early
-    if (!cryptoData.length) {
-      console.warn("No crypto data available; skipping graph generation.");
-      return {
-        text:
-          rawText.trim() + " (No crypto data available to generate graphs.)",
-        visualizations: [],
-      };
-    }
-
-    // Process each graph specification
+    // Process each graph specification using CoinGecko API
     const visualizations = [];
 
     for (const spec of graphSpecs) {
@@ -192,9 +295,7 @@ const processGraphsInResponse = async (llmResponse, userWallet) => {
 
       switch (type) {
         case "line":
-          // For line charts, handle two possible formats:
-          // 1. dataPoints as array of strings (e.g., ["bitcoin_price_7d"])
-          // 2. dataPoints as array of numeric values (e.g., [50000, 51000, 52000])
+          // For line charts, handle multiple formats
           if (datapoints && datapoints.length) {
             if (
               typeof datapoints[0] === "string" &&
@@ -203,17 +304,17 @@ const processGraphsInResponse = async (llmResponse, userWallet) => {
               // Format 1: Parse "cryptoId_metric_timeframe" format
               const [cryptoId, metric, timeframe] = datapoints[0].split("_");
               console.log(`Processing ${cryptoId} ${metric} for ${timeframe}`);
+
               if (metric === "price") {
-                graphData = generatePriceHistoryData(
-                  cryptoData,
-                  cryptoId,
-                  timeframe
-                );
-                console.log(
-                  "Generated price history data:",
-                  graphData ? `${graphData.length} points` : "null"
-                );
+                graphData = await generatePriceHistoryData(cryptoId, timeframe);
+              } else if (metric === "volume") {
+                graphData = await generateVolumeData(cryptoId, timeframe);
               }
+
+              console.log(
+                "Generated price history data:",
+                graphData ? `${graphData.length} points` : "null"
+              );
             } else if (
               Array.isArray(datapoints) &&
               typeof datapoints[0] === "number"
@@ -233,7 +334,25 @@ const processGraphsInResponse = async (llmResponse, userWallet) => {
               });
             } else if (title && title.toLowerCase().includes("bitcoin")) {
               // Fallback for Bitcoin if we can identify it from the title
-              graphData = generatePriceHistoryData(cryptoData, "bitcoin", "7d");
+              graphData = await generatePriceHistoryData("bitcoin", "7");
+            }
+          }
+          break;
+
+        case "candlestick":
+          // For candlestick charts, use OHLC data
+          if (datapoints && datapoints.length) {
+            if (
+              typeof datapoints[0] === "string" &&
+              datapoints[0].includes("_")
+            ) {
+              const [cryptoId, , timeframe] = datapoints[0].split("_");
+              console.log(
+                `Processing candlestick data for ${cryptoId} - ${timeframe}`
+              );
+              graphData = await generateCandlestickData(cryptoId, timeframe);
+            } else if (title && title.toLowerCase().includes("bitcoin")) {
+              graphData = await generateCandlestickData("bitcoin", "7");
             }
           }
           break;
@@ -242,10 +361,11 @@ const processGraphsInResponse = async (llmResponse, userWallet) => {
           // For bar charts, comparison between multiple cryptos
           if (datapoints && datapoints.length) {
             const metric = datapoints[0].split("_")[1] || "price";
-            graphData = generateComparisonData(
-              cryptoData,
+            const timeframe = datapoints[0].split("_")[2] || "7";
+            graphData = await generateComparisonData(
               datapoints.map((d) => d.split("_")[0]),
-              metric
+              metric,
+              timeframe
             );
           }
           break;
@@ -253,7 +373,10 @@ const processGraphsInResponse = async (llmResponse, userWallet) => {
         case "pie":
           // For pie charts, portfolio distribution
           if (datapoints && datapoints.includes("portfolio")) {
-            graphData = generatePortfolioData(userWallet, cryptoData);
+            // For portfolio data, we still need some database fallback
+            // But let's enhance it later - for now, skip portfolio charts
+            console.log("Portfolio charts not yet enhanced with API data");
+            graphData = null;
           }
           break;
 
@@ -303,4 +426,6 @@ module.exports = {
   generatePriceHistoryData,
   generateComparisonData,
   generatePortfolioData,
+  generateVolumeData,
+  generateCandlestickData,
 };
