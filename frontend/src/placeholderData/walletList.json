@@ -1,0 +1,12 @@
+[
+  {
+    "label": "Name",
+    "dataKey": "name",
+    "width": 80
+  },
+  {
+    "label": "Amount",
+    "dataKey": "amount",
+    "width": 20
+  }
+]

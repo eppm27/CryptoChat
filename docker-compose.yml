@@ -1,0 +1,42 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: ['npm', 'run', 'dev', '--', '--host', '0.0.0.0']
+
+  backend:
+    build: ./backend
+    ports:
+      - '3000:3000'
+    env_file:
+      - ./backend/.env
+    environment:
+      - MONGODB_URI
+      - JWT_SECRET
+      - OPENAI_API_KEY
+      - EMAIL_LOGIN
+      - EMAIL_PASSWORD
+      - ALPHA_VANTAGE_API_KEY
+      - MONGODB_URI_CRYPTO
+      - TWELVE_DATA_API_KEY
+      - RAPIDAPI_KEY
+      - ALPHA_VANTAGE_IND_KEY
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  mongo:
+    image: mongo:6
+    ports:
+      - '27017:27017' # Optional (only if accessing DB externally)
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

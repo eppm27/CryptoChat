@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Name",
+    "dataKey": "name",
+    "width": 120
+  },
+  {
+    "label": "Price",
+    "dataKey": "price",
+    "width": 100
+  },
+  {
+    "label": "Change",
+    "dataKey": "change",
+    "width": 100
+  },
+  {
+    "label": "Action",
+    "dataKey": "action",
+    "width": 100
+  },
+  {
+    "label": "Graph",
+    "dataKey": "graph",
+    "width": 100
+  }
+]
