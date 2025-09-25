@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/unsw-cse-comp99-3900/capstone-project-2025-t1-25t1-3900-f13a-celery#readme",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "axios": "^1.8.3",
     "bcryptjs": "^3.0.2",
     "chart.js": "^4.4.9",
@@ -30,7 +31,6 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.1",
     "nodemailer": "^6.10.1",
-    "openai": "^4.96.2",
     "react-chartjs-2": "^5.3.0"
   },
   "devDependencies": {

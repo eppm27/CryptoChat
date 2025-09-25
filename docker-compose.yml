@@ -19,7 +19,7 @@ services:
     environment:
       - MONGODB_URI
       - JWT_SECRET
-      - OPENAI_API_KEY
+      - GEMINI_API_KEY
       - EMAIL_LOGIN
       - EMAIL_PASSWORD
       - ALPHA_VANTAGE_API_KEY

@@ -14,18 +14,21 @@ A full-stack cryptocurrency trading and chat application built with React, Node.
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - React 18
 - Vite
 - Tailwind CSS
 - Axios for API calls
 
 ### Backend
+
 - Node.js with Express
 - MongoDB with Mongoose
 - JWT Authentication
 - RESTful API design
 
 ### External APIs
+
 - Alpha Vantage (Financial News)
 - Twelve Data (Crypto Prices)
 - OpenAI (Chat functionality)
@@ -41,12 +44,14 @@ A full-stack cryptocurrency trading and chat application built with React, Node.
 ### Local Development
 
 1. **Clone the repository**
+
    ```bash
    git clone <your-repo-url>
    cd crypto-chat-project
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    cd backend && npm install
@@ -54,18 +59,21 @@ A full-stack cryptocurrency trading and chat application built with React, Node.
    ```
 
 3. **Set up environment variables**
+
    - Copy the `.env` file and update with your API keys
 
 4. **Start MongoDB**
+
    ```bash
    docker run -d --name mongodb -p 27017:27017 mongo:6
    ```
 
 5. **Run the application**
+
    ```bash
    # Backend
    cd backend && node index.js
-   
+
    # Frontend (new terminal)
    cd frontend && npm run dev
    ```
@@ -73,9 +81,10 @@ A full-stack cryptocurrency trading and chat application built with React, Node.
 ## 🌐 Environment Variables
 
 Required API keys in `.env`:
+
 - MONGODB_URI
 - JWT_SECRET
-- OPENAI_API_KEY
+- GEMINI_API_KEY
 - ALPHA_VANTAGE_API_KEY
 - TWELVE_DATA_API_KEY
 

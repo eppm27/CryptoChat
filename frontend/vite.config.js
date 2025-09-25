@@ -16,7 +16,7 @@ export default defineConfig({
     //   "/api": "http://localhost:3000",
     // },
     proxy: {
-      '/user': 'http://backend:3000',
+      '/user': 'http://backend:3000', // for docker setup
       '/auth': 'http://backend:3000',
       '/api': 'http://backend:3000',
     },
