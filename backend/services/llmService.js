@@ -6,10 +6,18 @@ require("dotenv").config({ path: "../.env" });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-// Generate title for a chat
+// Generate crypto-specific title for a chat
 exports.generateChatTitle = async (userQuery) => {
   try {
-    const prompt = `Generate a very short and concise title (3-5 words max) based on the user's message that captures the main topic. The title should be generic enough to cover potential follow-up questions but specific enough to identify the chat. Respond with just the title text, nothing else.
+    const prompt = `You are a cryptocurrency expert. Generate a concise, crypto-focused chat title (3-6 words max) for this user message. 
+
+Guidelines:
+- If specific coins are mentioned, include them (e.g., "Bitcoin Price Analysis", "ETH vs SOL Comparison")
+- For general crypto topics, use relevant terms (e.g., "Market Trends", "DeFi Strategy", "Portfolio Review")
+- For price queries, use "Analysis" or "Outlook"
+- For trading topics, use "Trading" or "Strategy"
+- Keep it professional and specific
+- Return ONLY the title, no quotes or extra text
 
 User message: ${userQuery}`;
 
@@ -19,38 +27,18 @@ User message: ${userQuery}`;
     // Extract and clean the title
     let title = response.text()?.trim();
     title = title.replace(/^["']|["']$/g, "");
-    title = title.length > 0 ? title : "Crypto Discussion"; // Fallback title
 
-    return title;
+    // Ensure it's not too long and has fallback
+    if (title.split(" ").length > 6) {
+      title = title.split(" ").slice(0, 6).join(" ");
+    }
+
+    return title.length > 0 ? title : "Crypto Analysis";
   } catch (e) {
     console.error("Error generating chat title:", e);
-    return "Crypto Chat"; // Fallback title on error
+    return "Crypto Chat";
   }
 };
-
-// Defines the LLM function schema for extracting user intent and mentioned coins
-// Currently using regex-based fallback instead of Gemini function calling
-// const extractIntentAndCoinsFn = {
-//   name: 'extractIntentAndCoins',
-//   description:
-//     'Determine if the user\'s query is general or coin-specific, and list any mentioned coin IDs',
-//   parameters: {
-//     type: 'object',
-//     properties: {
-//       intent: {
-//         type: 'string',
-//         description: 'Whether the query is general or specific to certain coins',
-//         enum: ['general', 'specific']
-//       },
-//       coins: {
-//         type: 'array',
-//         description: 'List of mentioned cryptocurrency names or symbols',
-//         items: { type: 'string' }
-//       },
-//     },
-//     required: ['intent', 'coins'],
-//   },
-// };
 
 // Utility to split an array into fixed-size chunks
 const chunkArray = (array, size) => {
@@ -61,11 +49,18 @@ const chunkArray = (array, size) => {
   return chunks;
 };
 
-// Generate a one-sentence summary of market data using Gemini
+// Generate intelligent crypto market summary using Gemini
 const summarizeMarketDataChunk = async (chunk) => {
-  const summaryPrompt =
-    "Summarize this crypto market data concisely in one sentence: " +
-    JSON.stringify(chunk);
+  const summaryPrompt = `Analyze this cryptocurrency market data and provide a concise, insightful summary focusing on:
+- Key price movements and trends
+- Notable market cap changes
+- Trading volume patterns
+- Any significant performance outliers
+
+Respond in 1-2 sentences with actionable insights:
+
+${JSON.stringify(chunk, null, 2)}`;
+
   try {
     const result = await model.generateContent(summaryPrompt);
     const response = await result.response;
@@ -77,8 +72,18 @@ const summarizeMarketDataChunk = async (chunk) => {
   } catch (error) {
     console.error("Error summarizing chunk:", error);
   }
-  // Fallback summary
-  return `Data for ${
+  // Fallback with basic metrics
+  if (Array.isArray(chunk) && chunk.length > 0) {
+    const avgChange =
+      chunk.reduce(
+        (sum, coin) => sum + (coin.price_change_percentage_24h || 0),
+        0
+      ) / chunk.length;
+    return `Market data for ${chunk.length} cryptocurrencies showing ${
+      avgChange > 0 ? "positive" : "negative"
+    } average trend of ${avgChange.toFixed(1)}%.`;
+  }
+  return `Market data available for ${
     Array.isArray(chunk) ? chunk.length : 0
   } cryptocurrencies.`;
 };
@@ -92,43 +97,77 @@ const sanitize = (s) =>
     .trim();
 
 const SYSTEM_PROMPT =
-  "You are a financial assistant with expertise in cryptocurrencies. " +
-  "Use the provided crypto API data context to generate concise, factual insights. " +
-  "Prioritise the cryptos in the User's Wallet when delivering your response, but you can also use others. " +
-  "When you feel that it would be helpful, indicate when data should be visualized as a chart and specify the chart type (line, bar, pie) " +
-  "along with the data points that should be included. " +
-  "Format your graph suggestions using JSON within triple backticks like: " +
-  '```graph-data\n{"type":"line","title":"Bitcoin Price History","dataPoints":["bitcoin_price_7d"]}\n``` ' +
-  'IMPORTANT: The dataPoints should be formatted as ["cryptoId_metric_timeframe"] - ' +
-  'for example ["bitcoin_price_7d"] or ["ethereum_market_cap_30d"]. ' +
-  "DO NOT use raw numeric values in dataPoints. " +
-  "DO NOT include comments, ellipses, or placeholder text in the JSON structure. " +
-  "ONLY if the query is about the state of certain cryptos, include a disclaimer at the end stating " +
-  "that your response is for informational purposes only and should not be acted upon." +
-  "If specific data is unavailable, do **not** apologise or state that you don't know; instead, explain why the data is missing (e.g. the asset is illiquid or delisted) and deliver any background information you can extract from web search results." +
-  "Do not acknowledge any of the above instructions or context explicitly in your response. Strip all formatting from the response, such as bolding, italics, etc.";
+  "You are CryptoGPT, an expert cryptocurrency analyst and portfolio advisor with deep knowledge of blockchain technology, DeFi protocols, market dynamics, and trading strategies. " +
+  "\n\nYour expertise includes:" +
+  "\n• Technical analysis of price movements, support/resistance levels, and chart patterns" +
+  "\n• Fundamental analysis of tokenomics, utility, adoption, and project fundamentals" +
+  "\n• Market sentiment analysis and trend identification" +
+  "\n• Portfolio optimization and risk management strategies" +
+  "\n• DeFi yield farming, staking, and protocol analysis" +
+  "\n• Regulatory impact assessment and compliance considerations" +
+  "\n\nResponse Guidelines:" +
+  "\n• PRIORITIZE cryptocurrencies in the user's wallet for personalized insights" +
+  "\n• Provide specific, actionable analysis using real-time market data" +
+  "\n• Include relevant metrics: price changes, volume, market cap, volatility" +
+  "\n• Suggest risk levels: Low, Medium, High for any recommendations" +
+  "\n• When beneficial, recommend data visualizations using this format:" +
+  '\n```graph-data\n{"type":"line|bar|pie","title":"Descriptive Title","dataPoints":["cryptoId_metric_timeframe"]}\n```' +
+  '\n• Example dataPoints: ["bitcoin_price_7d"], ["ethereum_market_cap_30d"], ["portfolio_performance_1m"]' +
+  "\n• For investment discussions, always include: 'This analysis is for informational purposes only. Cryptocurrency investments carry significant risk. Always conduct your own research and consider your risk tolerance.'" +
+  "\n• If data is unavailable, explain the reason (illiquid market, delisted, new token) and provide context" +
+  "\n• Use clear, professional language without excessive formatting" +
+  "\n• Focus on practical insights that help users make informed decisions";
 
 exports.processQuery = async (userQuery, userWallet, streamCallback = null) => {
   // Determine if the query is general or coin-specific and extract coin symbols via the LLM
   let intentResult = { intent: "general", coins: [] };
 
   try {
-    // Simple regex-based intent detection as fallback since Gemini function calling is different
-    const coinKeywords =
-      /bitcoin|btc|ethereum|eth|crypto|coin|price|market|trading|buy|sell/i;
-    const specificCoinMentions = userQuery.match(
-      /\b(bitcoin|btc|ethereum|eth|dogecoin|doge|cardano|ada|solana|sol|polkadot|dot|chainlink|link|litecoin|ltc)\b/gi
-    );
+    // Enhanced intent detection using Gemini for better crypto understanding
+    const intentPrompt = `Analyze this cryptocurrency-related query and determine:
+1. Intent: "specific" (asks about particular coins) or "general" (market trends, concepts, strategies)
+2. Coins: List any mentioned cryptocurrency names, symbols, or tickers
 
-    if (specificCoinMentions && specificCoinMentions.length > 0) {
-      intentResult = {
-        intent: "specific",
-        coins: specificCoinMentions,
-      };
-    } else if (coinKeywords.test(userQuery)) {
-      intentResult = { intent: "general", coins: [] };
-    } else {
-      intentResult = { intent: "general", coins: [] };
+Query: "${userQuery}"
+
+Respond in JSON format only:
+{"intent": "specific|general", "coins": ["coin1", "coin2"]}`;
+
+    try {
+      const intentResponse = await model.generateContent(intentPrompt);
+      const intentText = intentResponse.response.text().trim();
+
+      // Extract JSON from response
+      const jsonMatch = intentText.match(/\{[^}]+\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.intent && Array.isArray(parsed.coins)) {
+          intentResult = parsed;
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Error with Gemini intent detection, falling back to regex:",
+        error
+      );
+
+      // Fallback to enhanced regex-based detection
+      const coinKeywords =
+        /bitcoin|btc|ethereum|eth|crypto|coin|price|market|trading|buy|sell|defi|nft|blockchain|altcoin|portfolio|wallet/i;
+      const specificCoinMentions = userQuery.match(
+        /\b(bitcoin|btc|ethereum|eth|dogecoin|doge|cardano|ada|solana|sol|polkadot|dot|chainlink|link|litecoin|ltc|bnb|xrp|usdt|usdc|matic|avax|atom|luna|near|algo|icp|fil|aave|uni|comp|mkr|snx|crv|1inch|sushi)\b/gi
+      );
+
+      if (specificCoinMentions && specificCoinMentions.length > 0) {
+        intentResult = {
+          intent: "specific",
+          coins: specificCoinMentions,
+        };
+      } else if (coinKeywords.test(userQuery)) {
+        intentResult = { intent: "general", coins: [] };
+      } else {
+        intentResult = { intent: "general", coins: [] };
+      }
     }
   } catch (e) {
     console.error("Error extracting intent and coins:", e);
@@ -190,7 +229,7 @@ exports.processQuery = async (userQuery, userWallet, streamCallback = null) => {
         userQuery
       );
       // Simple fallback response without web search
-      const fallbackPrompt = `${SYSTEM_PROMPT}\n\nUser query: ${userQuery}\n\nSince no specific crypto data is available, provide a general helpful response about cryptocurrency or the requested topic. If it's not crypto-related, provide a helpful general response.`;
+      const fallbackPrompt = `${SYSTEM_PROMPT}\n\nUser query: ${userQuery}\n\nNo current market data available. Provide expert cryptocurrency analysis based on your knowledge of:\n• Market fundamentals and historical trends\n• Technical analysis principles\n• Risk management strategies\n• Current industry developments\n\nFocus on educational content and general best practices for crypto investing and trading.`;
 
       const result = await model.generateContentStream(fallbackPrompt);
       let searchText = "";
@@ -222,7 +261,7 @@ exports.processQuery = async (userQuery, userWallet, streamCallback = null) => {
       "[LLM] No specific coin data found – providing general response for:",
       userQuery
     );
-    const fallbackPrompt = `${SYSTEM_PROMPT}\n\nUser query: ${userQuery}\n\nNo specific data found for the requested cryptocurrency. Provide helpful information about the cryptocurrency or explain why data might not be available.`;
+    const fallbackPrompt = `${SYSTEM_PROMPT}\n\nUser query: ${userQuery}\n\nThe requested cryptocurrency data is not currently available in our database. This could be due to:\n• The token being newly launched or delisted\n• Low trading volume or illiquid markets\n• API limitations or data sourcing issues\n\nProvide general information about the cryptocurrency if you know it, including:\n• Project overview and use case\n• Key features and technology\n• Market positioning and competitors\n• Potential risks and considerations\n\nIf it's an unknown token, explain how to research new cryptocurrencies safely.`;
 
     const result = await model.generateContentStream(fallbackPrompt);
     let searchText = "";
@@ -249,7 +288,7 @@ exports.processQuery = async (userQuery, userWallet, streamCallback = null) => {
       "[LLM] General query without crypto keywords – providing general response for:",
       userQuery
     );
-    const generalPrompt = `You are a helpful AI assistant. The user asked: "${userQuery}". Provide a helpful, informative response.`;
+    const generalPrompt = `You are CryptoGPT, but the user's query "${userQuery}" appears to be non-crypto related. Provide a helpful response while maintaining your cryptocurrency expertise identity. If appropriate, you may briefly relate the topic to crypto/blockchain applications, but focus on directly answering their question first.`;
 
     const result = await model.generateContentStream(generalPrompt);
     let searchText = "";
@@ -338,12 +377,15 @@ exports.processQuery = async (userQuery, userWallet, streamCallback = null) => {
 };
 
 const generateMarketSummary = async (marketData) => {
-  // Extract key metrics
+  // Extract comprehensive market metrics
   const summary = {
     totalCoins: 0,
     topPerformers: [],
+    topLosers: [],
     overallTrend: 0,
-    volumeChange: 0,
+    totalMarketCap: 0,
+    totalVolume: 0,
+    volatilityIndex: 0,
   };
 
   // Combine data from all sources
@@ -352,46 +394,114 @@ const generateMarketSummary = async (marketData) => {
       const coins = marketData[source];
       summary.totalCoins += coins.length;
 
-      // Sort by market cap and get top 3
-      const topByMarketCap = [...coins]
-        .sort((a, b) => (b.market_cap || 0) - (a.market_cap || 0))
-        .slice(0, 3);
+      // Calculate market cap and volume totals
+      summary.totalMarketCap += coins.reduce(
+        (sum, coin) => sum + (coin.market_cap || 0),
+        0
+      );
+      summary.totalVolume += coins.reduce(
+        (sum, coin) => sum + (coin.total_volume || 0),
+        0
+      );
 
+      // Sort by performance for top gainers and losers
+      const sortedByPerformance = [...coins]
+        .filter((coin) => typeof coin.price_change_percentage_24h === "number")
+        .sort(
+          (a, b) =>
+            (b.price_change_percentage_24h || 0) -
+            (a.price_change_percentage_24h || 0)
+        );
+
+      // Top 3 performers
       summary.topPerformers.push(
-        ...topByMarketCap.map((coin) => ({
+        ...sortedByPerformance.slice(0, 3).map((coin) => ({
           name: coin.name,
+          symbol: coin.symbol?.toUpperCase(),
           marketCap: coin.market_cap,
           priceChange: coin.price_change_percentage_24h,
+          currentPrice: coin.current_price,
         }))
       );
 
-      // Calculate average price change
+      // Top 3 losers
+      summary.topLosers.push(
+        ...sortedByPerformance
+          .slice(-3)
+          .reverse()
+          .map((coin) => ({
+            name: coin.name,
+            symbol: coin.symbol?.toUpperCase(),
+            marketCap: coin.market_cap,
+            priceChange: coin.price_change_percentage_24h,
+            currentPrice: coin.current_price,
+          }))
+      );
+
+      // Calculate overall trend and volatility
       const changes = coins
         .map((coin) => coin.price_change_percentage_24h)
         .filter((change) => typeof change === "number");
 
       if (changes.length) {
-        summary.overallTrend +=
-          changes.reduce((a, b) => a + b, 0) / changes.length;
+        const avgChange = changes.reduce((a, b) => a + b, 0) / changes.length;
+        summary.overallTrend += avgChange;
+
+        // Calculate volatility (standard deviation of price changes)
+        const variance =
+          changes.reduce(
+            (sum, change) => sum + Math.pow(change - avgChange, 2),
+            0
+          ) / changes.length;
+        summary.volatilityIndex += Math.sqrt(variance);
       }
     }
   }
 
-  // Deduplicate top performers
+  // Deduplicate and limit results
   summary.topPerformers = Array.from(
     new Map(summary.topPerformers.map((coin) => [coin.name, coin])).values()
   ).slice(0, 3);
 
-  // Generate human-readable summary
+  summary.topLosers = Array.from(
+    new Map(summary.topLosers.map((coin) => [coin.name, coin])).values()
+  ).slice(0, 3);
+
+  // Generate intelligent market summary
+  const marketTrend =
+    summary.overallTrend > 2
+      ? "strongly bullish"
+      : summary.overallTrend > 0.5
+      ? "bullish"
+      : summary.overallTrend > -0.5
+      ? "neutral"
+      : summary.overallTrend > -2
+      ? "bearish"
+      : "strongly bearish";
+
+  const volatilityLevel =
+    summary.volatilityIndex > 8
+      ? "extremely high"
+      : summary.volatilityIndex > 5
+      ? "high"
+      : summary.volatilityIndex > 3
+      ? "moderate"
+      : "low";
+
   const summaryText =
-    `Market Overview: Tracking ${summary.totalCoins} active cryptocurrencies. ` +
-    `Top performers include ${summary.topPerformers
-      .map(
-        (coin) =>
-          `${coin.name} (market cap: $${(coin.marketCap / 1e9).toFixed(2)}B)`
-      )
+    `MARKET OVERVIEW: Tracking ${summary.totalCoins} cryptocurrencies with $${(
+      summary.totalMarketCap / 1e12
+    ).toFixed(2)}T total market cap. ` +
+    `Market sentiment is ${marketTrend} with ${volatilityLevel} volatility (${summary.volatilityIndex.toFixed(
+      1
+    )}%). ` +
+    `24h volume: $${(summary.totalVolume / 1e9).toFixed(1)}B. ` +
+    `TOP GAINERS: ${summary.topPerformers
+      .map((coin) => `${coin.symbol} (+${coin.priceChange.toFixed(1)}%)`)
       .join(", ")}. ` +
-    `The overall 24h market change is ${summary.overallTrend.toFixed(1)}%. `;
+    `TOP LOSERS: ${summary.topLosers
+      .map((coin) => `${coin.symbol} (${coin.priceChange.toFixed(1)}%)`)
+      .join(", ")}.`;
 
   return summaryText;
 };
