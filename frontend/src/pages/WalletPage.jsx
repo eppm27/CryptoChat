@@ -1,22 +1,38 @@
 import React, { useEffect, useState } from "react";
-import CreateTables from "../components/CreateTables.jsx";
-import AddModal from "../components/AddModal.jsx";
 import { fetchUserData } from "../services/userAPI.jsx";
-import { Skeleton } from "@mui/material";
+import { Card, Button, Skeleton, PriceChange, Badge } from "../ui";
+import { cn } from "../utils/cn";
 
 const WalletPage = () => {
-  const [openModal, setOpenModal] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [walletData, setWalletData] = useState();
-  const [userData, setUserData] = useState();
+  const [walletData, setWalletData] = useState([]);
+  const [_userData, setUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [totalValue, setTotalValue] = useState(0);
+  const [totalChange24h, setTotalChange24h] = useState(0);
+  const [_showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     const loadUserData = async () => {
       try {
         const user = await fetchUserData();
-        setWalletData(user.wallet);
+        setWalletData(user.wallet || []);
         setUserData(user);
+        
+        // Calculate total portfolio value and change
+        if (user.wallet && user.wallet.length > 0) {
+          const total = user.wallet.reduce((sum, item) => {
+            return sum + (parseFloat(item.currentPrice || 0) * parseFloat(item.quantity || 0));
+          }, 0);
+          
+          const totalChange = user.wallet.reduce((sum, item) => {
+            const itemValue = parseFloat(item.currentPrice || 0) * parseFloat(item.quantity || 0);
+            const change = parseFloat(item.change24h || 0);
+            return sum + (itemValue * change / 100);
+          }, 0);
+          
+          setTotalValue(total);
+          setTotalChange24h(totalChange);
+        }
       } catch (err) {
         console.error("Error fetching user data:", err);
       } finally {
@@ -24,73 +40,307 @@ const WalletPage = () => {
       }
     };
     loadUserData();
-  }, [refreshKey]);
+  }, []);
 
-  const newItem = () => setOpenModal(true);
-  const closeModal = () => setOpenModal(false);
-  const handleAddedSuccessfully = () => setRefreshKey((prev) => prev + 1);
+  const WalletItem = ({ item }) => {
+    const itemValue = parseFloat(item.currentPrice || 0) * parseFloat(item.quantity || 0);
+    const change24h = parseFloat(item.change24h || 0);
+    const profitLoss = itemValue * change24h / 100;
+
+    return (
+      <Card className="group hover:shadow-lg transition-all duration-200 bg-white/80 backdrop-blur-sm">
+        <div className="p-4">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="relative">
+              <img
+                src={item.imageUrl || '/default-crypto-icon.png'}
+                alt={item.coin}
+                className="h-12 w-12 rounded-full"
+                onError={(e) => {
+                  e.target.src = '/default-crypto-icon.png';
+                }}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-lg text-neutral-900 truncate">
+                {item.coin}
+              </h3>
+              <p className="text-sm text-neutral-500 uppercase">
+                {item.symbol}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-neutral-500">Holdings</p>
+              <p className="font-semibold text-neutral-900">
+                {parseFloat(item.quantity).toLocaleString()} {item.symbol}
+              </p>
+            </div>
+          </div>
+
+          {/* Price Info */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <p className="text-sm text-neutral-500 mb-1">Current Price</p>
+              <p className="font-semibold text-neutral-900">
+                ${parseFloat(item.currentPrice).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: item.currentPrice < 1 ? 6 : 2
+                })}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-neutral-500 mb-1">Total Value</p>
+              <p className="font-bold text-lg text-neutral-900">
+                ${itemValue.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </p>
+            </div>
+          </div>
+
+          {/* Performance */}
+          <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <p className="text-xs text-neutral-500 mb-1">24h Change</p>
+                <PriceChange value={item.change24h} size="sm" />
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-neutral-500 mb-1">P&L (24h)</p>
+                <p className={cn(
+                  "text-sm font-semibold",
+                  profitLoss > 0 ? "text-success-600" : profitLoss < 0 ? "text-danger-600" : "text-neutral-600"
+                )}>
+                  {profitLoss > 0 ? '+' : ''}${Math.abs(profitLoss).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}
+                </p>
+              </div>
+            </div>
+            
+            <Button variant="outline" size="sm" className="text-xs">
+              Trade
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50/30 p-4 pb-20 lg:pb-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Header Skeleton */}
+          <div className="mb-6">
+            <Skeleton className="h-8 w-48 mb-2" />
+            <Skeleton className="h-4 w-64 mb-6" />
+            
+            {/* Portfolio Overview Skeleton */}
+            <Card className="p-6 mb-6">
+              <Skeleton className="h-6 w-32 mb-4" />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Skeleton className="h-4 w-24 mb-2" />
+                  <Skeleton className="h-8 w-32" />
+                </div>
+                <div>
+                  <Skeleton className="h-4 w-24 mb-2" />
+                  <Skeleton className="h-6 w-20" />
+                </div>
+                <div>
+                  <Skeleton className="h-4 w-24 mb-2" />
+                  <Skeleton className="h-6 w-24" />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Holdings Skeleton */}
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="p-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="flex-1">
+                    <Skeleton className="h-5 w-24 mb-1" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                  <div className="text-right">
+                    <Skeleton className="h-4 w-16 mb-1" />
+                    <Skeleton className="h-5 w-20" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-1" />
+                    <Skeleton className="h-5 w-16" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-1" />
+                    <Skeleton className="h-6 w-24" />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen px-6 py-4 bg-gray-50">
-      <div className="flex justify-between items-center mb-6">
-        {isLoading ? (
-          <>
-            <Skeleton variant="text" width={250} height={50} />
-            <Skeleton variant="rectangular" width={150} height={40} />
-          </>
-        ) : (
-          <>
-            <h2 className="text-3xl font-bold text-customNavyBlue text-left">
-              My Crypto Wallet
-            </h2>
-
-            {walletData && walletData.length > 0 && (
-              <button
-                onClick={newItem}
-                className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 font-semibold rounded-lg shadow"
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50/30 p-4 pb-20 lg:pb-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-neutral-900">
+                My Crypto Wallet
+              </h1>
+              <p className="text-neutral-600">
+                Track and manage your cryptocurrency portfolio
+              </p>
+            </div>
+            {walletData.length > 0 && (
+              <Button
+                onClick={() => setShowAddModal(true)}
+                className="hidden md:flex"
               >
-                Add New Crypto
-              </button>
+                Add Crypto
+              </Button>
             )}
-          </>
+          </div>
+
+          {/* Portfolio Overview */}
+          {walletData.length > 0 && (
+            <Card className="p-6 mb-6 bg-gradient-to-r from-primary-500 to-primary-600 text-white">
+              <h2 className="text-lg font-semibold mb-4">Portfolio Overview</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-primary-100 text-sm mb-1">Total Value</p>
+                  <p className="text-2xl font-bold">
+                    ${totalValue.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-primary-100 text-sm mb-1">24h Change</p>
+                  <p className={cn(
+                    "text-lg font-semibold",
+                    totalChange24h > 0 ? "text-success-200" : totalChange24h < 0 ? "text-danger-200" : "text-white"
+                  )}>
+                    {totalChange24h > 0 ? '+' : ''}${Math.abs(totalChange24h).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-primary-100 text-sm mb-1">Holdings</p>
+                  <p className="text-lg font-semibold">
+                    {walletData.length} Crypto{walletData.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {/* Holdings */}
+        {walletData.length === 0 ? (
+          <Card className="text-center py-12">
+            <div className="mx-auto h-24 w-24 text-neutral-400 mb-4">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-neutral-900 mb-2">
+              Your wallet is empty
+            </h3>
+            <p className="text-neutral-600 mb-6">
+              Start building your crypto portfolio by adding your first cryptocurrency
+            </p>
+            <Button
+              onClick={() => setShowAddModal(true)}
+              size="lg"
+            >
+              Add Your First Crypto
+            </Button>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-neutral-900">
+                Your Holdings
+              </h2>
+            </div>
+            
+            {walletData.map((item, index) => (
+              <WalletItem key={`${item.coin}-${index}`} item={item} />
+            ))}
+            
+            {/* Mobile Add Button */}
+            <div className="md:hidden pt-4">
+              <Button
+                onClick={() => setShowAddModal(true)}
+                className="w-full"
+                size="lg"
+              >
+                Add Crypto
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Stats */}
+        {walletData.length > 0 && (
+          <Card className="mt-6 p-4">
+            <h3 className="font-semibold text-neutral-900 mb-3">Quick Stats</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div>
+                <p className="text-sm text-neutral-500 mb-1">Best Performer</p>
+                <p className="font-semibold text-success-600">
+                  {walletData.reduce((best, current) => 
+                    parseFloat(current.change24h) > parseFloat(best.change24h) ? current : best
+                  ).symbol}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-neutral-500 mb-1">Worst Performer</p>
+                <p className="font-semibold text-danger-600">
+                  {walletData.reduce((worst, current) => 
+                    parseFloat(current.change24h) < parseFloat(worst.change24h) ? current : worst
+                  ).symbol}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-neutral-500 mb-1">Largest Holding</p>
+                <p className="font-semibold text-neutral-900">
+                  {walletData.reduce((largest, current) => {
+                    const currentValue = parseFloat(current.currentPrice) * parseFloat(current.quantity);
+                    const largestValue = parseFloat(largest.currentPrice) * parseFloat(largest.quantity);
+                    return currentValue > largestValue ? current : largest;
+                  }).symbol}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-neutral-500 mb-1">Avg. Change</p>
+                <PriceChange 
+                  value={(walletData.reduce((sum, item) => sum + parseFloat(item.change24h), 0) / walletData.length).toFixed(2)}
+                  size="sm"
+                />
+              </div>
+            </div>
+          </Card>
         )}
       </div>
-
-      {isLoading ? (
-        <div className="flex flex-col gap-4">
-          <Skeleton variant="rectangular" height={400} />
-        </div>
-      ) : (
-        <>
-          {walletData ? (
-            walletData.length === 0 ? (
-              <div className="w-full border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center py-8 px-4 text-center gap-4 min-h-[650px]">
-                <p className="text-gray-500 text-lg">Your wallet is empty</p>
-                <button
-                  className="rounded-lg bg-customNavyBlue px-6 py-3 text-white font-semibold hover:bg-opacity-90 transition"
-                  onClick={newItem}
-                >
-                  Add Crypto to Wallet
-                </button>
-              </div>
-            ) : (
-              <CreateTables
-                inputTableType="walletPage"
-                userData={userData}
-                onSuccess={handleAddedSuccessfully}
-              />
-            )
-          ) : null}
-        </>
-      )}
-
-      {openModal && (
-        <AddModal
-          closeModal={closeModal}
-          onSuccess={handleAddedSuccessfully}
-          modalType="wallet"
-        />
-      )}
     </div>
   );
 };

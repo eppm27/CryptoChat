@@ -1,19 +1,17 @@
 import React, { useEffect, useState, useMemo } from "react";
-import addButton from "../assets/add-circle-svgrepo-com.svg";
 import { useNavigate } from "react-router-dom";
 import CreateTables from "../components/CreateTables.jsx";
 import CreateQuickStartPrompts from "../components/QuickStartPrompts.jsx";
-import sendIcon from "../assets/plain-svgrepo-com.svg";
 import { fetchUserData } from "../services/userAPI.jsx";
 import NewsPreview from "../components/NewsPreview";
-import { Skeleton } from "@mui/material";
+import { Button, Card, Skeleton, GlassCard } from "../ui/index";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [userData, setUserData] = useState(null);
 
   useEffect(() => {
-    document.title = "Dashboard Page";
+    document.title = "Dashboard - CryptoChat";
     const loadUserData = async () => {
       try {
         const user = await fetchUserData();
@@ -46,176 +44,334 @@ const DashboardPage = () => {
     }
   };
 
+  // Icons
+  const PlusIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+      />
+    </svg>
+  );
+
+  const ChatIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+      />
+    </svg>
+  );
+
+  const TrendingUpIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+      />
+    </svg>
+  );
+
+  const BookmarkIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+      />
+    </svg>
+  );
+
+  const NewsIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
+      />
+    </svg>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 px-2 py-4 space-y-1">
-      {/* Greeting */}
-      <div className="text-center">
-        {userData ? (
-          <>
-            <h1 className="text-2xl font-bold text-gray-800">
-              Welcome, {userData.firstName}
-            </h1>
-            <p className="text-md text-gray-500 mt-2">
-              Start today’s financial journey here!
-            </p>
-          </>
-        ) : (
-          <>
-            <Skeleton
-              variant="text"
-              width={200}
-              height={30}
-              sx={{ margin: "auto" }}
-            />
-            <Skeleton
-              variant="text"
-              width={250}
-              height={20}
-              sx={{ margin: "auto", marginTop: "8px" }}
-            />
-          </>
-        )}
-      </div>
-
-      {/* Watchlist Section */}
-      <section className="rounded-2xl p-4 sm:p-8 space-y-1">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-customNavyBlue">
-            Watchlist
-          </h2>
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+        {/* Welcome Section */}
+        <div className="text-center space-y-4">
           {userData ? (
-            userData.watchlist?.length > 0 ? (
-              <img
-                src={addButton}
-                alt="Add"
-                className="w-6 h-6 cursor-pointer hover:scale-110 transition"
-                onClick={() => navigate("/watchlist")}
-              />
-            ) : (
-              <Skeleton variant="circular" width={24} height={24} />
-            )
+            <>
+              <h1 className="text-2xl md:text-3xl font-bold text-neutral-900">
+                Welcome back, {userData.firstName}! 👋
+              </h1>
+              <p className="text-neutral-600 text-lg">
+                Ready to explore the crypto markets today?
+              </p>
+            </>
           ) : (
-            <Skeleton variant="circular" width={24} height={24} />
-          )}
-        </div>
-        {userData ? (
-          userData.watchlist?.length === 0 ? (
-            <div className="border-2 border-dashed rounded-xl text-center py-10">
-              <p className="text-gray-500 mb-4">Your watchlist is empty</p>
-              <button
-                className="bg-customNavyBlue text-white px-6 py-2 rounded-lg hover:bg-opacity-90"
-                onClick={() => navigate("/watchlist")}
-              >
-                Add to Watchlist
-              </button>
+            <div className="space-y-3">
+              <Skeleton className="h-8 w-64 mx-auto" />
+              <Skeleton className="h-6 w-80 mx-auto" />
             </div>
-          ) : (
-            <CreateTables inputTableType="watchlist" userData={userData} />
-          )
-        ) : (
-          <Skeleton
-            variant="rectangular"
-            height={150}
-            sx={{ borderRadius: 2 }}
-          />
-        )}
-      </section>
-
-      {/* Saved Prompts Section */}
-      <section className="rounded-2xl p-4 sm:p-8 space-y-1">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-customNavyBlue">Saved</h2>
-          {userData ? (
-            userData.savedPrompts?.length > 0 ? (
-              <img
-                src={addButton}
-                alt="Add"
-                className="w-6 h-6 cursor-pointer hover:scale-110 transition"
-                onClick={() => navigate("/saved")}
-              />
-            ) : (
-              <Skeleton variant="circular" width={24} height={24} />
-            )
-          ) : (
-            <Skeleton variant="circular" width={24} height={24} />
           )}
         </div>
-        {userData ? (
-          userData.savedPrompts?.length === 0 ? (
-            <div className="border-2 border-dashed rounded-xl text-center py-10">
-              <p className="text-gray-500 mb-4">No saved prompts yet</p>
-              <button
-                className="bg-customNavyBlue text-white px-6 py-2 rounded-lg hover:bg-opacity-90"
-                onClick={() => navigate("/saved")}
-              >
-                Add to Saved
-              </button>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card
+            hover
+            className="p-6 cursor-pointer bg-gradient-to-r from-primary-500 to-primary-600 text-white"
+            onClick={handleNewChat}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <ChatIcon />
+              </div>
+              <div>
+                <h3 className="font-semibold">New Chat</h3>
+                <p className="text-primary-100 text-sm">Start analyzing</p>
+              </div>
             </div>
-          ) : (
-            <CreateTables inputTableType="savedPrompt" userData={userData} />
-          )
-        ) : (
-          <Skeleton
-            variant="rectangular"
-            height={150}
-            sx={{ borderRadius: 2 }}
-          />
-        )}
-      </section>
+          </Card>
 
-      {/* News Section */}
-      <section className="rounded-2xl p-4 sm:p-8 space-y-1">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-xl font-semibold text-customNavyBlue">
-            Latest News
-          </h2>
-          {userData ? (
-            <button
-              onClick={() => navigate("/news")}
-              className="text-sm text-blue-600 hover:underline"
-            >
-              View All
-            </button>
-          ) : (
-            <Skeleton variant="text" width={80} />
-          )}
+          <Card
+            hover
+            className="p-6 cursor-pointer"
+            onClick={() => navigate("/watchlist")}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-success-100 rounded-xl flex items-center justify-center text-success-600">
+                <TrendingUpIcon />
+              </div>
+              <div>
+                <h3 className="font-semibold text-neutral-900">Watchlist</h3>
+                <p className="text-neutral-600 text-sm">Track favorites</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card
+            hover
+            className="p-6 cursor-pointer"
+            onClick={() => navigate("/saved")}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-secondary-100 rounded-xl flex items-center justify-center text-secondary-600">
+                <BookmarkIcon />
+              </div>
+              <div>
+                <h3 className="font-semibold text-neutral-900">Saved</h3>
+                <p className="text-neutral-600 text-sm">Your bookmarks</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card
+            hover
+            className="p-6 cursor-pointer"
+            onClick={() => navigate("/news")}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center text-yellow-600">
+                <NewsIcon />
+              </div>
+              <div>
+                <h3 className="font-semibold text-neutral-900">News</h3>
+                <p className="text-neutral-600 text-sm">Stay updated</p>
+              </div>
+            </div>
+          </Card>
         </div>
-        {userData ? (
-          <NewsPreview />
-        ) : (
-          <Skeleton
-            variant="rectangular"
-            height={200}
-            sx={{ borderRadius: 2 }}
-          />
-        )}
-      </section>
 
-      {/* Floating Chat Button */}
-      <button
-        onClick={handleNewChat}
-        className="fixed bottom-6 right-6 bg-yellow-400 hover:bg-yellow-500 text-white p-4 rounded-full shadow-lg transition"
-        title="Start new chat"
-      >
-        <img src={sendIcon} alt="Go to Chat" className="w-6 h-6" />
-      </button>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Watchlist Section */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-neutral-900 flex items-center space-x-2">
+                  <TrendingUpIcon />
+                  <span>Your Watchlist</span>
+                </h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/watchlist")}
+                  icon={<PlusIcon />}
+                >
+                  Manage
+                </Button>
+              </div>
 
-      {/* Quick Start Prompts */}
-      <div className="flex flex-col mt-4 px-4">
-        <div className="flex flex-row justify-between w-full pb-1 items-center">
-          <h2 className="text-xl font-semibold text-customNavyBlue mb-2">
-            Quick Start
-          </h2>
+              {userData ? (
+                userData.watchlist?.length > 0 ? (
+                  <CreateTables
+                    userId={userData._id}
+                    isWatchlist={true}
+                    userWatchlist={userData.watchlist}
+                    className="mobile-optimized"
+                  />
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-neutral-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <TrendingUpIcon />
+                    </div>
+                    <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+                      No watchlist items yet
+                    </h3>
+                    <p className="text-neutral-600 mb-4">
+                      Start by adding some cryptocurrencies to your watchlist
+                    </p>
+                    <Button onClick={() => navigate("/cryptos")}>
+                      Explore Cryptos
+                    </Button>
+                  </div>
+                )
+              ) : (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center space-x-4">
+                      <Skeleton className="w-10 h-10 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* Quick Start Prompts */}
+            <Card className="p-6">
+              <h2 className="text-xl font-bold text-neutral-900 mb-6 flex items-center space-x-2">
+                <ChatIcon />
+                <span>Quick Start Prompts</span>
+              </h2>
+              <div className="space-y-4">{quickStartPrompts}</div>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Wallet Section */}
+            <Card className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-neutral-900">
+                  Portfolio
+                </h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/wallet")}
+                >
+                  View All
+                </Button>
+              </div>
+
+              {userData ? (
+                userData.wallet?.length > 0 ? (
+                  <CreateTables
+                    userId={userData._id}
+                    isWatchlist={false}
+                    userWallet={userData.wallet}
+                    className="mobile-optimized"
+                  />
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="w-12 h-12 bg-neutral-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="font-semibold text-neutral-900 mb-1">
+                      Empty Portfolio
+                    </h3>
+                    <p className="text-neutral-600 text-sm mb-3">
+                      Add your crypto holdings
+                    </p>
+                    <Button size="sm" onClick={() => navigate("/wallet")}>
+                      Add Holdings
+                    </Button>
+                  </div>
+                )
+              ) : (
+                <div className="space-y-3">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="flex items-center space-x-3">
+                      <Skeleton className="w-8 h-8 rounded-full" />
+                      <div className="flex-1 space-y-1">
+                        <Skeleton className="h-3 w-16" />
+                        <Skeleton className="h-2 w-12" />
+                      </div>
+                      <Skeleton className="h-3 w-12" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* News Preview */}
+            <Card className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-neutral-900 flex items-center space-x-2">
+                  <NewsIcon />
+                  <span>Latest News</span>
+                </h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/news")}
+                >
+                  See All
+                </Button>
+              </div>
+              <NewsPreview />
+            </Card>
+          </div>
         </div>
-        {userData ? (
-          quickStartPrompts
-        ) : (
-          <Skeleton
-            variant="rectangular"
-            height={200}
-            sx={{ borderRadius: 2 }}
-          />
-        )}
       </div>
     </div>
   );

@@ -2,22 +2,19 @@ import React, {
   useState,
   useRef,
   useEffect,
-  useCallback,
-  useMemo,
 } from "react";
 import ReactMarkdown from "react-markdown";
-import sendIcon from "../assets/plain-svgrepo-com.svg";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import {
   createChat,
   getChatMessages,
-  deleteChat,
   addPromptToSaved,
 } from "../services/userAPI";
 import { message } from "antd";
 import ChatChart from "../components/ChatChart";
 import promptList from "../components/PromptList";
-import { Skeleton } from "@mui/material";
+import { Button, Card, Skeleton, BottomSheet } from "../ui/index";
+import { cn } from "../utils/cn";
 
 const ChatPage = () => {
   const [messages, setMessages] = useState([]);
@@ -25,9 +22,11 @@ const ChatPage = () => {
   const chatContainerRef = useRef(null);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
+  const [showPrompts, setShowPrompts] = useState(false);
   const location = useLocation();
   const { chatId } = useParams();
+  const navigate = useNavigate();
   const hasUserSentMessage = useRef(false);
   const inputRef = useRef(null);
 
@@ -52,554 +51,396 @@ const ChatPage = () => {
     }
   };
 
-  const randomizedPrompts = useMemo(() => {
-    return promptList.sort(() => 0.5 - Math.random()).slice(0, 3);
-  }, []);
-
-  useEffect(() => {
-    const init = async () => {
-      if (!chatId && !currentChatId) {
-        const newChat = await initialiseNewChat();
-        setCurrentChatId(newChat._id);
-        setMessages(getWelcomeMsg());
-      } else if (chatId && !currentChatId) {
-        setCurrentChatId(chatId);
-      }
-    };
-    init();
-  }, [chatId, currentChatId, location.state?.isNewChat]);
-
-  useEffect(() => {
-    const fetchMessages = async () => {
-      if (!currentChatId) return;
-      if (messages.length > 0) return;
-      try {
-        const { messages: messagesData } = await getChatMessages(currentChatId);
-        if (!messagesData || messagesData.length === 0) {
-          setMessages((prev) => (prev.length === 0 ? getWelcomeMsg() : prev));
-        } else {
-          setMessages(
-            messagesData.map((msg) => ({
-              content: msg.content,
-              role: msg.role === "user" ? "user" : "chatBot",
-              isError: msg.isError,
-              visualizations: msg.visualization || null,
-              createdAt: msg.createdAt,
-            }))
-          );
-        }
-      } catch (err) {
-        console.error("Chat init failed:", err);
-        setError("Failed to load chat");
-      }
-    };
-    fetchMessages();
-  }, [currentChatId, location.state?.isNewChat, messages, messages.length]);
-
-  const handleSend = useCallback(
-    async (customPrompt) => {
-      hasUserSentMessage.current = true;
-      const messageToSend =
-        typeof customPrompt === "string" ? customPrompt.trim() : input.trim();
-      if (!messageToSend || !currentChatId) return;
-
-      setIsLoading(true);
-      setInput("");
-      setError(null);
-
-      const placeholderId = Date.now().toString();
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          content: messageToSend,
-          role: "user",
-          isError: false,
-          visualization: null,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: placeholderId,
-          content: "",
-          role: "chatBot",
-          isError: false,
-          isStreaming: true,
-          visualizations: null,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
-
-      try {
-        const eventSource = new EventSource(
-          `/api/chat/${currentChatId}/messages/stream?content=${encodeURIComponent(
-            messageToSend
-          )}`
-        );
-
-        eventSource.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-
-          if (data.type === "content") {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === placeholderId
-                  ? {
-                      ...msg,
-                      content: (msg.content || "") + (data.content || ""),
-                    }
-                  : msg
-              )
-            );
-          } else if (data.type === "chart") {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === placeholderId
-                  ? {
-                      ...msg,
-                      visualizations: [
-                        ...(msg.visualizations || []),
-                        data.spec,
-                      ],
-                    }
-                  : msg
-              )
-            );
-          } else if (data.type === "complete") {
-            setMessages((prev) => {
-              const updated = [...prev];
-              const lastIndex = updated.findLastIndex(
-                (msg) => msg.role === "chatBot"
-              );
-              if (lastIndex !== -1) {
-                updated[lastIndex] = {
-                  ...updated[lastIndex],
-                  id: data.llmMessage?._id ?? updated[lastIndex].id,
-                  isStreaming: false,
-                  content:
-                    data.llmMessage?.content || data.llmMessage?.text || "",
-                  visualizations: data.llmMessage?.visualization || null,
-                  isError: data.llmMessage?.isError || false,
-                };
-              }
-              return updated;
-            });
-            eventSource.close();
-            setIsLoading(false);
-            setTimeout(async () => {
-              try {
-                const { messages: updatedMessages } = await getChatMessages(
-                  currentChatId
-                );
-                setMessages(
-                  updatedMessages.map((msg) => ({
-                    content: msg.content,
-                    role: msg.role === "user" ? "user" : "chatBot",
-                    isError: msg.isError,
-                    visualizations: msg.visualization || null,
-                    createdAt: msg.createdAt,
-                  }))
-                );
-              } catch (err) {
-                console.error("Failed to refetch messages:", err);
-              }
-            }, 500);
-          } else if (data.type === "error") {
-            setError(data.error);
-            setMessages((prev) => {
-              const updated = [...prev];
-              const lastIndex = updated.findLastIndex(
-                (msg) => msg.role === "chatBot"
-              );
-
-              if (lastIndex !== -1) {
-                updated[lastIndex] = {
-                  ...updated[lastIndex],
-                  id: data.llmMessage?._id ?? updated[lastIndex].id,
-                  isStreaming: false,
-                  content:
-                    data.llmMessage?.content || data.llmMessage?.text || "",
-                  visualizations: data.llmMessage?.visualization || null,
-                  isError: data.llmMessage?.isError || false,
-                };
-              }
-
-              return updated;
-            });
-
-            eventSource.close();
-            setIsLoading(false);
-          }
-        };
-
-        eventSource.onerror = (error) => {
-          console.error("EventSource error:", error);
-          setError("Connection error occurred");
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === placeholderId
-                ? {
-                    ...msg,
-                    content: "Connection error occurred",
-                    isError: true,
-                    isStreaming: false,
-                  }
-                : msg
-            )
-          );
-          eventSource.close();
-          setIsLoading(false);
-        };
-      } catch (error) {
-        console.error("Error setting up streaming:", error);
-        setMessages((prev) => [
-          ...prev,
-          {
-            content: "Failed to get response",
-            role: "chatBot",
-            isError: true,
-            visualization: null,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-        setIsLoading(false);
-      }
-    },
-    [input, currentChatId]
+  // Icons
+  const SendIcon = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+    </svg>
   );
 
-  //automatic scroll up
+  const BookmarkIcon = () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+    </svg>
+  );
+
+  const SparklesIcon = () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM13 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2h-2zM5 13a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM13 13a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2z" />
+    </svg>
+  );
+
+  const MicIcon = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+    </svg>
+  );
+
+  // Initialize chat
+  useEffect(() => {
+    const loadChatMessages = async (chatId) => {
+      try {
+        setIsLoading(true);
+        const chatData = await getChatMessages(chatId);
+        
+        if (chatData.messages && chatData.messages.length > 0) {
+          setMessages(chatData.messages);
+          hasUserSentMessage.current = true;
+        } else {
+          setMessages(getWelcomeMsg());
+        }
+      } catch (error) {
+        console.error("Error loading chat messages:", error);
+        setMessages(getWelcomeMsg());
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const initializeChat = async () => {
+      if (chatId && chatId !== "new") {
+        setCurrentChatId(chatId);
+        await loadChatMessages(chatId);
+      } else if (location.state?.justCreated) {
+        // New chat was just created
+        if (location.state.isNewChat) {
+          setMessages(getWelcomeMsg());
+        }
+      } else {
+        // Create new chat if none exists
+        const newChat = await initialiseNewChat();
+        if (newChat) {
+          setCurrentChatId(newChat._id);
+          setMessages(getWelcomeMsg());
+          navigate(`/chat/${newChat._id}`, { replace: true });
+        }
+      }
+    };
+
+    initializeChat();
+  }, [chatId, location.state, navigate]);
+
+
+
+  const handleSendMessage = async (messageText = null) => {
+    const textToSend = messageText || input.trim();
+    if (!textToSend || isLoading) return;
+
+    const userMessage = {
+      content: textToSend,
+      role: "user",
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
+    hasUserSentMessage.current = true;
+
+    try {
+      const response = await fetch(`/api/llm/chat/${currentChatId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ message: textToSend }),
+      });
+
+      if (!response.ok) throw new Error("Failed to send message");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let botMessage = {
+        content: "",
+        role: "chatBot",
+        isError: false,
+        visualization: null,
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages(prev => [...prev, botMessage]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.type === 'content') {
+                botMessage.content += data.content;
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { ...botMessage };
+                  return updated;
+                });
+              } else if (data.type === 'visualization') {
+                botMessage.visualization = data.visualization;
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { ...botMessage };
+                  return updated;
+                });
+              }
+            } catch (e) {
+              console.error("Error parsing SSE data:", e);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setMessages(prev => [...prev, {
+        content: "Sorry, I encountered an error. Please try again.",
+        role: "chatBot",
+        isError: true,
+        timestamp: new Date().toISOString(),
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSavePrompt = async (content) => {
+    try {
+      await addPromptToSaved(content);
+      message.success("Prompt saved successfully!");
+    } catch (error) {
+      console.error("Error saving prompt:", error);
+      message.error("Failed to save prompt");
+    }
+  };
+
+  // Auto-scroll to bottom
   useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop =
-        chatContainerRef.current.scrollHeight;
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
-  useEffect(() => {
-    return () => {
-      if (!hasUserSentMessage.current && currentChatId) {
-        deleteChat(currentChatId)
-          .then(() => console.log("Empty chat deleted"))
-          .catch((err) => console.error("Failed to delete empty chat:", err));
-      }
-    };
-  }, [currentChatId]);
+  const MessageBubble = ({ message }) => {
+    const isUser = message.role === "user";
+    const isBot = message.role === "chatBot";
 
-  // downloads the latest chat response
-  const handleDownload = () => {
-    const lastBotMessage = [...messages]
-      .reverse()
-      .find((m) => m.role === "chatBot");
-    if (!lastBotMessage) return;
-
-    const blob = new Blob([lastBotMessage.content], {
-      type: "text/plain;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "chat-response.txt";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleReport = () => {
-    const lastBotMessage = [...messages]
-      .reverse()
-      .find((m) => m.role === "chatBot");
-    if (!lastBotMessage) return;
-
-    const subject = encodeURIComponent("Report: Inappropriate Bot Response");
-    const body = encodeURIComponent(
-      `I want to report the following bot response:\n\n"${
-        lastBotMessage.content
-      }"\n\nChat ID: ${currentChatId || "N/A"}`
-    );
-    window.location.href = `mailto:cryptochat.it@gmail.com?subject=${subject}&body=${body}`;
-  };
-
-  const handleSavePrompt = async () => {
-    const lastUserMessage = [...messages]
-      .reverse()
-      .find((m) => m.role === "user");
-
-    if (!lastUserMessage) {
-      message.warning("No user message found to save.");
-      return;
-    }
-
-    try {
-      await addPromptToSaved(lastUserMessage.content);
-      message.success("Prompt saved to your Saved Prompts!");
-    } catch (error) {
-      console.error("Error saving prompt:", error);
-      message.error("Failed to save the prompt.");
-    }
-  };
-
-  //clear chat
-  const handleClearChat = async () => {
-    if (!currentChatId) return;
-    try {
-      await deleteChat(currentChatId);
-      setMessages([]);
-      const chatData = await initialiseNewChat();
-      setCurrentChatId(chatData._id);
-      setMessages(getWelcomeMsg());
-    } catch (err) {
-      console.error("Failed to delete chat:", err);
-      setError("Failed to delete chat");
-    }
-  };
-
-  const hasSentPromptRef = useRef(false);
-
-  useEffect(() => {
-    const safeSend = () => {
-      if (
-        !hasSentPromptRef.current &&
-        currentChatId &&
-        location.state?.isNewChat
-      ) {
-        const prompt =
-          location.state?.initialPrompt ||
-          location.state?.dashboardPrompt ||
-          location.state?.walletWatchlistPrompt;
-        if (prompt) {
-          hasSentPromptRef.current = true;
-          handleSend(prompt);
-        }
-      }
-    };
-    safeSend();
-  }, [
-    currentChatId,
-    location.state?.isNewChat,
-    location.state?.initialPrompt,
-    location.state?.dashboardPrompt,
-    location.state?.walletWatchlistPrompt,
-    handleSend,
-  ]);
-
-  return (
-    <div className="flex flex-col h-screen">
-      {/* Error display */}
-      {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
-          <p>{error}</p>
-        </div>
-      )}
-
-      {/* Chat Messages Container */}
-      <div
-        ref={chatContainerRef}
-        className="flex-grow p-4 space-y-4 overflow-y-auto pb-[225px]"
-      >
-        {messages.length > 0 ? (
-          messages.map((message, index) => (
-            <div
-              key={`${index}-${message.createdAt}`}
-              className={`flex ${
-                message.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              <div
-                className={`px-4 py-3 max-w-[90%] text-base rounded-2xl shadow-md ${
-                  message.role === "user"
-                    ? "bg-[#2563eb] text-white rounded-br-sm self-end"
-                    : message.isError
-                    ? "bg-red-100 text-red-900 rounded-bl-sm self-start"
-                    : message.isStreaming
-                    ? "bg-gray-100 text-gray-900 rounded-bl-sm self-start border-l-4 animate-pulse"
-                    : "bg-gray-100 text-gray-900 rounded-bl-sm self-start"
-                } text-left`}
-              >
-                <ReactMarkdown>{message.content || message.text}</ReactMarkdown>
-                {message.visualizations && (
-                  <div className="mt-2">
-                    {Array.isArray(message.visualizations) ? (
-                      message.visualizations.map((vis, idx) => (
-                        <ChatChart key={`vis-${idx}`} visualization={vis} />
-                      ))
-                    ) : (
-                      <ChatChart visualization={message.visualizations} />
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {message.isStreaming && (
-                <span className="inline-block ml-1 animate-pulse">▌</span>
-              )}
-            </div>
-          ))
-        ) : (
-          <>
-            {[...Array(3)].map((_, idx) => (
-              <Skeleton
-                key={idx}
-                variant="rectangular"
-                height={60}
-                width="70%"
-                animation="wave"
-                sx={{ borderRadius: 2 }}
-              />
-            ))}
-          </>
-        )}
-
-        {/* Show Quick Start Prompts after welcome message */}
-        {location.state?.isNewChat &&
-          location.state?.justCreated &&
-          messages.length === 1 &&
-          messages[0].role === "chatBot" && (
-            <div className="flex flex-wrap gap-2 justify-center mt-4">
-              {randomizedPrompts.map((prompt, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => handleSend(prompt)}
-                  className="bg-blue-300 hover:bg-blue-400 rounded-2xl px-4 py-2 text-sm font-semibold cursor-pointer transition"
-                >
-                  {prompt}
+    return (
+      <div className={cn(
+        "flex w-full",
+        isUser ? "justify-end" : "justify-start"
+      )}>
+        <div className={cn(
+          "max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 break-words",
+          isUser 
+            ? "bg-primary-600 text-white ml-4" 
+            : "bg-white border border-neutral-200 mr-4 shadow-sm"
+        )}>
+          {isBot && !message.isError && (
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
+                  <SparklesIcon />
                 </div>
-              ))}
+                <span className="text-sm font-medium text-neutral-600">CryptoGPT</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleSavePrompt(message.content)}
+                className="h-6 w-6 p-0"
+              >
+                <BookmarkIcon />
+              </Button>
             </div>
           )}
-        {/* Icons below the bot's message bubble */}
-        {messages.length > 0 &&
-        messages[messages.length - 1].role === "chatBot" ? (
-          <div className="flex flex-row justify-center mt-2 space-x-6">
-            {/* Download Button */}
-            <button
-              onClick={handleDownload}
-              className="flex flex-col items-center gap-1 hover:scale-105 transition mb-2"
-              aria-label="Download bot response"
-            >
-              <div className="p-3 bg-customNavyBlue hover:bg-[#1e3a8a] rounded-full shadow-md transition">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  height="24px"
-                  viewBox="0 -960 960 960"
-                  width="24px"
-                  fill="#ffffff"
-                >
-                  <path d="M480-315.33 284.67-510.67l47.33-48L446.67-444v-356h66.66v356L628-558.67l47.33 48L480-315.33ZM226.67-160q-27 0-46.84-19.83Q160-199.67 160-226.67V-362h66.67v135.33h506.66V-362H800v135.33q0 27-19.83 46.84Q760.33-160 733.33-160H226.67Z" />
-                </svg>
-              </div>
-              <span className="text-xs font-medium text-gray-800">
-                Download
-              </span>
-            </button>
-
-            {/* Save Prompt Button */}
-            <button
-              onClick={handleSavePrompt}
-              className="flex flex-col items-center gap-1 hover:scale-105 transition mb-2"
-              aria-label="Save prompt"
-            >
-              <div className="p-3 bg-green-600 hover:bg-green-700 rounded-full shadow-md transition">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  height="24"
-                  viewBox="0 -960 960 960"
-                  width="24"
-                  fill="#ffffff"
-                >
-                  <path d="M200-120v-656.67q0-27 19.83-46.83 19.84-19.83 46.84-19.83h426.66q27 0 46.84 19.83Q760-803.67 760-776.67V-120L480-240 200-120Zm66.67-101.33L480-312l213.33 90.67v-555.34H266.67v555.34Zm0-555.34h426.66-426.66Z" />
-                </svg>
-              </div>
-              <span className="text-xs font-medium text-gray-800">
-                Save Prompt
-              </span>
-            </button>
-
-            {/* Report Button */}
-            <button
-              onClick={handleReport}
-              className="flex flex-col items-center gap-1 hover:scale-105 transition mb-2"
-              aria-label="Report bot message"
-            >
-              <div className="p-3 bg-red-500 hover:bg-red-600 rounded-full shadow-md transition">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  height="24px"
-                  viewBox="0 -960 960 960"
-                  width="24px"
-                  fill="#ffffff"
-                >
-                  <path d="M480-280.67q15 0 25.83-10.83 10.84-10.83 10.84-25.83 0-15-10.84-25.84Q495-354 480-354q-15 0-25.83 10.83-10.84 10.84-10.84 25.84t10.84 25.83Q465-280.67 480-280.67ZM446.67-430h66.66v-255.33h-66.66V-430Z" />
-                </svg>
-              </div>
-              <span className="text-xs font-medium text-gray-800">Report</span>
-            </button>
+          
+          <div className={cn(
+            "prose prose-sm max-w-none",
+            isUser ? "prose-invert" : "",
+            message.isError ? "text-danger-600" : ""
+          )}>
+            <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
-        ) : isLoading ? (
-          <div className="flex flex-row justify-center mt-2 space-x-6">
-            {/* Skeleton for Loading State */}
-            {[...Array(3)].map((_, idx) => (
-              <div key={idx} className="flex flex-col items-center gap-1">
-                <Skeleton variant="circular" width={48} height={48} />
-                <Skeleton variant="text" width={60} height={20} />
+
+          {message.visualization && (
+            <div className="mt-4 rounded-xl overflow-hidden">
+              <ChatChart visualization={message.visualization} />
+            </div>
+          )}
+
+          <div className={cn(
+            "text-xs mt-2 opacity-70",
+            isUser ? "text-right text-primary-100" : "text-neutral-500"
+          )}>
+            {new Date(message.timestamp).toLocaleTimeString([], { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-gradient-to-b from-neutral-50 to-primary-50/20">
+      {/* Chat Header */}
+      <div className="flex-shrink-0 bg-white/95 backdrop-blur-md border-b border-neutral-200/50 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 transition-colors md:hidden"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div>
+              <h1 className="font-semibold text-neutral-900">CryptoGPT</h1>
+              <p className="text-sm text-neutral-500">Your AI crypto assistant</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPrompts(true)}
+              icon={<SparklesIcon />}
+              className="hidden md:flex"
+            >
+              Prompts
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPrompts(true)}
+              className="md:hidden w-9 h-9 p-0"
+            >
+              <SparklesIcon />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Messages Container */}
+      <div 
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto px-4 py-6 space-y-6"
+        style={{ scrollBehavior: 'smooth' }}
+      >
+        {isLoading && messages.length === 0 ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex justify-start">
+                <div className="max-w-[70%] space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
               </div>
             ))}
           </div>
-        ) : null}
+        ) : (
+          messages.map((message, index) => (
+            <MessageBubble key={index} message={message} index={index} />
+          ))
+        )}
+
+        {isLoading && messages.length > 0 && (
+          <div className="flex justify-start">
+            <div className="max-w-[70%] bg-white border border-neutral-200 rounded-2xl px-4 py-3 shadow-sm">
+              <div className="flex items-center space-x-2 mb-2">
+                <div className="w-6 h-6 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
+                  <SparklesIcon />
+                </div>
+                <span className="text-sm font-medium text-neutral-600">CryptoGPT</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="flex space-x-1">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="w-2 h-2 bg-primary-400 rounded-full animate-bounce"
+                      style={{ animationDelay: `${i * 0.1}s` }}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm text-neutral-500">Thinking...</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Footer with Chat Input Field */}
-      <footer className="fixed bottom-0 left-0 right-0 w-full bg-[#F1F5F9] border-t border-customNavyBlue shadow-md px-4 py-3">
-        <div className="flex flex-col items-center max-w-3xl mx-auto gap-2">
-          <div className="flex items-center w-full gap-3">
-            {/* Input Field */}
-            <textarea
-              ref={inputRef}
-              rows={1}
-              placeholder="Ask me anything..."
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                e.target.style.height = "auto";
-                e.target.style.height = `${e.target.scrollHeight}px`;
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !isLoading && currentChatId) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              className="flex-grow px-4 py-3 text-base rounded-full border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-customNavyBlue shadow-sm placeholder-gray-500 resize-none overflow-hidden"
-              disabled={isLoading || !currentChatId}
-            />
-
-            {/* Send Button */}
-            <button
-              onClick={handleSend}
-              disabled={isLoading || !currentChatId}
-              className="bg-customNavyBlue hover:bg-[#1e3a8a] active:bg-[#162d6a] transition p-3 rounded-full shadow-md"
-            >
-              <img src={sendIcon} alt="Send" className="w-5 h-5 invert" />
-            </button>
+      {/* Input Section */}
+      <div className="flex-shrink-0 bg-white/95 backdrop-blur-md border-t border-neutral-200/50 p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-end space-x-3">
+            <div className="flex-1 relative">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Ask me about crypto prices, trends, or strategies..."
+                className="w-full min-h-[44px] max-h-32 px-4 py-3 pr-12 text-base border border-neutral-300 rounded-2xl bg-white/80 backdrop-blur-sm placeholder-neutral-400 resize-none transition-all duration-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none"
+                rows={1}
+                style={{ 
+                  height: 'auto',
+                  minHeight: '44px'
+                }}
+              />
+              <button
+                onClick={() => handleSendMessage()}
+                disabled={!input.trim() || isLoading}
+                className={cn(
+                  "absolute bottom-2 right-2 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200",
+                  input.trim() && !isLoading
+                    ? "bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg active:scale-95"
+                    : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
+                )}
+              >
+                <SendIcon />
+              </button>
+            </div>
           </div>
-
-          <div className="flex justify-between items-center w-full text-sm text-gray-600">
-            {/* Clear Chat Button */}
-            <button
-              onClick={handleClearChat}
-              className="absolute bottom-[calc(15%+95px)] px-4 py-2 text-sm font-semibold text-white bg-red-500 shadow-md hover:bg-red-600 active:bg-red-700 transition rounded-t-lg"
-            >
-              Clear Chat
-            </button>
-            {/* Disclaimer */}
-            <span className="italic text-xs">
-              *Disclaimer: This assistant provides general information, not
-              financial advice. Please verify independently.*
-            </span>
+          
+          <div className="flex items-center justify-between mt-3 text-xs text-neutral-500">
+            <span>Press Enter to send, Shift + Enter for new line</span>
+            <span>{input.length}/2000</span>
           </div>
         </div>
-      </footer>
+      </div>
+
+      {/* Quick Prompts Bottom Sheet */}
+      <BottomSheet
+        isOpen={showPrompts}
+        onClose={() => setShowPrompts(false)}
+        title="Quick Start Prompts"
+      >
+        <div className="space-y-3 max-h-80 overflow-y-auto">
+          {promptList.map((prompt, index) => (
+            <button
+              key={index}
+              onClick={() => {
+                handleSendMessage(prompt);
+                setShowPrompts(false);
+              }}
+              className="w-full p-3 text-left bg-neutral-50 hover:bg-neutral-100 rounded-xl border border-neutral-200 transition-colors"
+            >
+              <p className="text-sm font-medium text-neutral-900">{prompt}</p>
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
     </div>
   );
 };
