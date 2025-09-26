@@ -39,9 +39,10 @@ function CryptoExplorePage() {
   const filteredAndSortedData = useMemo(() => {
     let filtered = cryptoData.filter((crypto) => {
       // Search filter
-      const matchesSearch = crypto.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           crypto.symbol?.toLowerCase().includes(searchTerm.toLowerCase());
-      
+      const matchesSearch =
+        crypto.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        crypto.symbol?.toLowerCase().includes(searchTerm.toLowerCase());
+
       // Category filter
       let matchesCategory = true;
       if (selectedCategory === "top-10") {
@@ -53,7 +54,7 @@ function CryptoExplorePage() {
       } else if (selectedCategory === "losers") {
         matchesCategory = crypto.price_change_percentage_24h_in_currency < 0;
       }
-      
+
       return matchesSearch && matchesCategory;
     });
 
@@ -76,17 +77,26 @@ function CryptoExplorePage() {
         case "name":
           aVal = a.name || "";
           bVal = b.name || "";
-          return sortOrder === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+          return sortOrder === "asc"
+            ? aVal.localeCompare(bVal)
+            : bVal.localeCompare(aVal);
         default:
           aVal = a.market_cap_rank || 999999;
           bVal = b.market_cap_rank || 999999;
       }
-      
+
       return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
     });
 
     return filtered.slice(0, itemsToShow);
-  }, [cryptoData, searchTerm, selectedCategory, sortBy, sortOrder, itemsToShow]);
+  }, [
+    cryptoData,
+    searchTerm,
+    selectedCategory,
+    sortBy,
+    sortOrder,
+    itemsToShow,
+  ]);
 
   const handleCryptoClick = (cryptoId) => {
     navigate(`/cryptoDetails/${cryptoId}`);
@@ -145,8 +155,12 @@ function CryptoExplorePage() {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Explore Cryptocurrencies</h1>
-          <p className="text-gray-600">Discover and analyze the latest crypto market trends</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Explore Cryptocurrencies
+          </h1>
+          <p className="text-gray-600">
+            Discover and analyze the latest crypto market trends
+          </p>
         </div>
 
         {/* Search and Filters */}
@@ -169,7 +183,9 @@ function CryptoExplorePage() {
               {categories.map((category) => (
                 <Badge
                   key={category}
-                  variant={selectedCategory === category ? "default" : "secondary"}
+                  variant={
+                    selectedCategory === category ? "default" : "secondary"
+                  }
                   className={cn(
                     "cursor-pointer transition-colors capitalize",
                     selectedCategory === category
@@ -197,7 +213,8 @@ function CryptoExplorePage() {
                   }
                 }}
               >
-                Market Cap {sortBy === "market_cap" && (sortOrder === "desc" ? "↓" : "↑")}
+                Market Cap{" "}
+                {sortBy === "market_cap" && (sortOrder === "desc" ? "↓" : "↑")}
               </Button>
               <Button
                 variant={sortBy === "price" ? "default" : "outline"}
@@ -225,7 +242,8 @@ function CryptoExplorePage() {
                   }
                 }}
               >
-                24h Change {sortBy === "change_24h" && (sortOrder === "desc" ? "↓" : "↑")}
+                24h Change{" "}
+                {sortBy === "change_24h" && (sortOrder === "desc" ? "↓" : "↑")}
               </Button>
             </div>
           </div>
@@ -234,7 +252,8 @@ function CryptoExplorePage() {
         {/* Results Count */}
         {!isLoading && (
           <div className="text-center text-gray-600">
-            Showing {filteredAndSortedData.length} of {cryptoData.length} cryptocurrencies
+            Showing {filteredAndSortedData.length} of {cryptoData.length}{" "}
+            cryptocurrencies
           </div>
         )}
 
@@ -250,9 +269,12 @@ function CryptoExplorePage() {
             <Card className="p-12 text-center bg-white/80 backdrop-blur-sm">
               <div className="space-y-4">
                 <div className="text-6xl">🔍</div>
-                <h3 className="text-xl font-semibold text-gray-900">No cryptocurrencies found</h3>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  No cryptocurrencies found
+                </h3>
                 <p className="text-gray-600">
-                  Try adjusting your search terms or filters to find what you're looking for.
+                  Try adjusting your search terms or filters to find what you're
+                  looking for.
                 </p>
                 <Button
                   variant="outline"
@@ -337,17 +359,19 @@ function CryptoExplorePage() {
         </div>
 
         {/* Load More Button */}
-        {!isLoading && filteredAndSortedData.length > 0 && filteredAndSortedData.length < cryptoData.length && (
-          <div className="text-center">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => setItemsToShow(prev => prev + 20)}
-            >
-              Load More Cryptocurrencies
-            </Button>
-          </div>
-        )}
+        {!isLoading &&
+          filteredAndSortedData.length > 0 &&
+          filteredAndSortedData.length < cryptoData.length && (
+            <div className="text-center">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setItemsToShow((prev) => prev + 20)}
+              >
+                Load More Cryptocurrencies
+              </Button>
+            </div>
+          )}
       </div>
     </div>
   );

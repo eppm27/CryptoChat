@@ -12,12 +12,13 @@ import { useNavigate } from "react-router-dom";
 import savedPromptColumn from "../placeholderData/savedPromptColumn.json";
 import walletColumns from "../placeholderData/walletList.json";
 import DeleteModal from "./DeleteModal.jsx";
-import { LineChart, Line, ResponsiveContainer } from "recharts";
+import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, Area, AreaChart } from "recharts";
 import { fetchCryptoDetailsDatabase } from "../services/cryptoAPI";
-import { ArrowDropUp, ArrowDropDown } from "@mui/icons-material";
+import { ArrowDropUp, ArrowDropDown, MoreVert } from "@mui/icons-material";
 import { message } from "antd";
-import { Wallet } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import GraphColour from "./GraphColour";
+import { Card, PriceChange, Badge, Button } from "../ui/index";
 
 const watchlistPageColumns = [
   { label: "Name", dataKey: "name", width: 150 },
@@ -44,8 +45,13 @@ const VirtuosoTableComponents = {
       {...props}
       ref={ref}
       sx={{
-        overflowX: "auto", // horizontal scroll
+        overflowX: "auto",
         width: "100%",
+        backgroundColor: "rgba(255, 255, 255, 0.8)",
+        backdropFilter: "blur(10px)",
+        borderRadius: "12px",
+        border: "1px solid rgba(255, 255, 255, 0.2)",
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
       }}
     />
   )),
@@ -54,7 +60,12 @@ const VirtuosoTableComponents = {
       {...props}
       sx={{
         borderCollapse: "separate",
-        tableLayout: "fixed", // Ensures that columns have a fixed width
+        tableLayout: "fixed",
+        "& .MuiTableRow-root:hover": {
+          backgroundColor: "rgba(59, 130, 246, 0.05)",
+          transform: "translateY(-1px)",
+          transition: "all 0.2s ease-in-out",
+        },
       }}
     />
   ),
@@ -65,8 +76,15 @@ const VirtuosoTableComponents = {
       sx={{
         position: "sticky",
         top: 0,
-        backgroundColor: "#fff", // Ensures the header stays visible over content
-        zIndex: 1,
+        backgroundColor: "rgba(248, 250, 252, 0.95)",
+        backdropFilter: "blur(10px)",
+        zIndex: 2,
+        "& .MuiTableCell-root": {
+          borderBottom: "2px solid rgba(59, 130, 246, 0.1)",
+          fontWeight: 600,
+          fontSize: "0.875rem",
+          color: "rgb(55, 65, 81)",
+        },
       }}
     />
   )),
@@ -79,6 +97,172 @@ const VirtuosoTableComponents = {
 VirtuosoTableComponents.Scroller.displayName = "VirtuosoScroller";
 VirtuosoTableComponents.TableHead.displayName = "VirtuosoTableHead";
 VirtuosoTableComponents.TableBody.displayName = "VirtuosoTableBody";
+
+// Mobile Card Component for responsive design
+const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, onRowClick }) => {
+  const handleCardClick = async () => {
+    if (inputTableType === "watchlist" || inputTableType === "savedPrompt") {
+      // Call the existing handleCellClick function
+      let prompt;
+      if (row.name) {
+        prompt = `Tell me about ${row.name}`;
+      } else {
+        prompt = row.prompt?.trim();
+      }
+
+      if (!prompt) return;
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ prompt }),
+        });
+
+        if (!response.ok) throw new Error("Failed to create a new chat");
+        const newChat = await response.json();
+        navigate(`/chat/${newChat.id}`);
+      } catch (error) {
+        console.error("Error creating chat:", error);
+        message.error("Failed to start chat");
+      }
+    } else if (
+      inputTableType === "watchlistPage" ||
+      inputTableType === "savedPage" ||
+      inputTableType === "walletPage"
+    ) {
+      if (onRowClick) {
+        onRowClick(row);
+      } else {
+        setDeleteModal({ showModal: true, rowData: row });
+      }
+    }
+  };
+
+  // Enhanced Tooltip Component for Graph
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-3">
+          <p className="text-sm font-semibold text-gray-900">
+            ${payload[0].value?.toFixed(4)}
+          </p>
+          <p className="text-xs text-gray-600">
+            {label ? new Date(label).toLocaleDateString() : ''}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <Card 
+      className="p-4 cursor-pointer hover:shadow-lg transition-all duration-200 bg-white/90 backdrop-blur-sm border border-gray-200"
+      onClick={handleCardClick}
+    >
+      {/* Header Row */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="font-bold text-lg text-gray-900">
+            {row.name}
+          </div>
+          {(inputTableType === "watchlistPage" || inputTableType === "watchlist") &&
+            userData?.wallet?.some(
+              (walletItem) => walletItem.cryptoId === row.userWatchlistInfo?.cryptoId
+            ) && (
+              <Badge variant="secondary" className="text-xs">
+                <Wallet className="w-3 h-3 mr-1" />
+                Wallet
+              </Badge>
+          )}
+        </div>
+        <MoreVert className="text-gray-400" />
+      </div>
+
+      {/* Price and Change Row */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-2xl font-bold text-gray-900">
+          {row.price}
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          {row.change24h && (
+            <PriceChange
+              value={row.change24h === "N/A" ? null : parseFloat(row.change24h)}
+              showIcon={true}
+              className="font-semibold text-sm"
+            />
+          )}
+          {row.change1h && (
+            <PriceChange
+              value={row.change1h === "N/A" ? null : parseFloat(row.change1h)}
+              showIcon={true}
+              className="font-medium text-xs"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Market Cap and Graph Row */}
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          {row.marketCap && (
+            <div className="text-sm text-gray-600 mb-1">Market Cap</div>
+          )}
+          <div className="font-semibold text-gray-800">
+            {row.marketCap || row.prompt || row.content}
+          </div>
+        </div>
+        
+        {/* Enhanced 7-Day Graph */}
+        {row.graphInfo && (
+          <div className="w-24 h-16 ml-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={row.graphInfo}>
+                <defs>
+                  <linearGradient id={`gradient-${row.name}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop 
+                      offset="5%" 
+                      stopColor={GraphColour(row.graphInfo)} 
+                      stopOpacity={0.3}
+                    />
+                    <stop 
+                      offset="95%" 
+                      stopColor={GraphColour(row.graphInfo)} 
+                      stopOpacity={0.05}
+                    />
+                  </linearGradient>
+                </defs>
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="price"
+                  stroke={GraphColour(row.graphInfo)}
+                  strokeWidth={2}
+                  fill={`url(#gradient-${row.name})`}
+                  dot={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      {/* Additional Info for Saved Prompts */}
+      {(inputTableType === "savedPrompt" || inputTableType === "savedPage") && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>{row.dateCreated || 'Recent'}</span>
+            <span>{row.category || 'General'}</span>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+};
 
 function fixedHeaderContent(inputTableType) {
   let tableColumn = [];
@@ -114,30 +298,29 @@ function fixedHeaderContent(inputTableType) {
                 inputTableType === "watchlist") &&
               index === 0
                 ? "sticky"
-                : "static", // Ensure only first column is sticky
+                : "static",
             left:
               (inputTableType === "watchlistPage" ||
                 inputTableType === "watchlist") &&
               index === 0
                 ? 0
                 : "auto",
-            borderRight: index > 0 ? "1px solid rgba(0, 0, 0, 0.1)" : "none",
+            borderRight: index > 0 ? "1px solid rgba(59, 130, 246, 0.1)" : "none",
             boxShadow:
               (inputTableType === "watchlistPage" ||
                 inputTableType === "watchlist") &&
               index === 0
-                ? "4px 0 6px rgba(0, 0, 0, 0.2)"
+                ? "4px 0 12px rgba(59, 130, 246, 0.15)"
                 : "none",
-            zIndex: 1,
+            zIndex: 2,
           }}
-          className={
-            inputTableType === "walletProfile"
-              ? "bg-gray-300"
-              : "bg-customTableBlue"
-          }
           sx={{
-            padding: "6px 18px",
-            fontWeight: "bold",
+            padding: "12px 18px",
+            fontWeight: 600,
+            fontSize: "0.875rem",
+            color: "rgb(55, 65, 81)",
+            backgroundColor: "rgba(248, 250, 252, 0.95)",
+            backdropFilter: "blur(10px)",
           }}
         >
           {column.label}
@@ -217,9 +400,10 @@ function rowContent(
           key={column.dataKey}
           align={column.numeric || false ? "right" : "left"}
           sx={{
-            padding: "0px 18px",
-            height: "40px",
-            bgcolor: "white",
+            padding: "12px 18px",
+            minHeight: "56px",
+            bgcolor: "transparent",
+            borderBottom: "1px solid rgba(229, 231, 235, 0.8)",
             position:
               (inputTableType === "watchlistPage" ||
                 inputTableType === "watchlist") &&
@@ -236,7 +420,7 @@ function rowContent(
               (inputTableType === "watchlistPage" ||
                 inputTableType === "watchlist") &&
               index === 0
-                ? "4px 0 6px rgba(0, 0, 0, 0.2)"
+                ? "4px 0 12px rgba(59, 130, 246, 0.1)"
                 : "none",
             borderRight: index > 0 ? "1px solid rgba(0, 0, 0, 0.1)" : "none",
             zIndex: 1,
@@ -262,60 +446,101 @@ function rowContent(
           }}
         >
           {column.dataKey === "graphInfo" ? (
-            <ResponsiveContainer width="100%" height={60}>
-              <LineChart data={row[column.dataKey]}>
-                <Line
-                  type="monotone"
-                  dataKey="price"
-                  stroke={GraphColour(row[column.dataKey])}
-                  dot={false}
-                  strokeWidth={1}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="relative">
+              <ResponsiveContainer width="100%" height={60}>
+                <AreaChart data={row[column.dataKey]}>
+                  <defs>
+                    <linearGradient id={`tableGradient-${index}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop 
+                        offset="5%" 
+                        stopColor={GraphColour(row[column.dataKey])} 
+                        stopOpacity={0.4}
+                      />
+                      <stop 
+                        offset="95%" 
+                        stopColor={GraphColour(row[column.dataKey])} 
+                        stopOpacity={0.1}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <Tooltip 
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-2">
+                            <p className="text-xs font-semibold text-gray-900">
+                              ${payload[0].value?.toFixed(4)}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              {label ? new Date(label).toLocaleDateString() : '7-day trend'}
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="price"
+                    stroke={GraphColour(row[column.dataKey])}
+                    strokeWidth={2}
+                    fill={`url(#tableGradient-${index})`}
+                    dot={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+              {/* Trend indicator overlay */}
+              <div className="absolute top-1 right-1">
+                {(() => {
+                  const data = row[column.dataKey];
+                  if (data && data.length >= 2) {
+                    const trend = data[data.length - 1]?.price > data[0]?.price;
+                    return trend ? (
+                      <TrendingUp className="w-3 h-3 text-green-500" />
+                    ) : (
+                      <TrendingDown className="w-3 h-3 text-red-500" />
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
           ) : column.dataKey === "change1h" ||
             column.dataKey === "change24h" ||
             column.dataKey === "change7d" ? (
-            <div className="flex flex-row">
-              {/* arrow icons */}
-              {row[column.dataKey] === "N/A" ? null : row[
-                  column.dataKey
-                ].startsWith("-") ? (
-                <ArrowDropDown
-                  style={{ color: "red", verticalAlign: "middle" }}
-                />
-              ) : (
-                <ArrowDropUp
-                  style={{ color: "green", verticalAlign: "middle" }}
-                />
-              )}
-
-              {/* percentage value */}
-              <div
-                style={{
-                  color: row[column.dataKey].startsWith("-")
-                    ? "red"
-                    : row[column.dataKey] !== "N/A"
-                    ? "green"
-                    : "gray",
-                }}
-              >
-                {row[column.dataKey]}
-              </div>
-            </div>
+            <PriceChange
+              value={row[column.dataKey] === "N/A" ? null : parseFloat(row[column.dataKey])}
+              showIcon={true}
+              className="font-semibold"
+            />
           ) : column.dataKey === "name" ? (
-            <div className="flex gap-2">
-              <div>{row[column.dataKey]}</div>
-
+            <div className="flex items-center gap-3">
+              <div className="font-semibold text-gray-900">{row[column.dataKey]}</div>
               {(inputTableType === "watchlistPage" ||
                 inputTableType === "watchlist") &&
                 userData?.wallet?.some(
                   (walletItem) =>
                     walletItem.cryptoId === row.userWatchlistInfo.cryptoId
-                ) && <Wallet className="w-8" />}
+                ) && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Wallet className="w-3 h-3 mr-1" />
+                    In Wallet
+                  </Badge>
+                )}
+            </div>
+          ) : column.dataKey === "price" ? (
+            <div className="font-bold text-gray-900 text-lg">
+              {row[column.dataKey]}
+            </div>
+          ) : column.dataKey === "marketCap" ? (
+            <div className="font-semibold text-gray-700">
+              {row[column.dataKey]}
             </div>
           ) : (
-            row[column.dataKey]
+            <div className="text-gray-600">
+              {row[column.dataKey]}
+            </div>
           )}
         </TableCell>
       ))}
@@ -323,7 +548,7 @@ function rowContent(
   );
 }
 
-export default function CreateTable({ inputTableType, userData, onSuccess }) {
+export default function CreateTable({ inputTableType, userData, onSuccess, onRowClick }) {
   const [deleteModal, setDeleteModal] = useState({
     showModal: false,
     rowData: null,
@@ -476,27 +701,49 @@ export default function CreateTable({ inputTableType, userData, onSuccess }) {
       : 170;
 
   return (
-    <Paper style={{ height: tableHeight, width: "100%" }}>
-      <TableVirtuoso
-        data={tableData}
-        components={VirtuosoTableComponents}
-        fixedHeaderContent={() => fixedHeaderContent(inputTableType)}
-        itemContent={(index, row) =>
-          rowContent(
-            index,
-            row,
-            inputTableType,
-            navigate,
-            setDeleteModal,
-            undefined,
-            userData
-          )
-        }
-        style={{
-          overflowX: "auto", // Ensure horizontal scrolling
-          width: "100%",
-        }}
-      />
+    <>
+      {/* Mobile View - Card Layout */}
+      <div className="block lg:hidden">
+        <div className="space-y-3">
+          {tableData?.map((row, index) => (
+            <MobileCard
+              key={index}
+              row={row}
+              inputTableType={inputTableType}
+              navigate={navigate}
+              setDeleteModal={setDeleteModal}
+              userData={userData}
+              onRowClick={onRowClick}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Desktop View - Table Layout */}
+      <div className="hidden lg:block">
+        <Paper style={{ height: tableHeight, width: "100%" }}>
+          <TableVirtuoso
+            data={tableData}
+            components={VirtuosoTableComponents}
+            fixedHeaderContent={() => fixedHeaderContent(inputTableType)}
+            itemContent={(index, row) =>
+              rowContent(
+                index,
+                row,
+                inputTableType,
+                navigate,
+                setDeleteModal,
+                onRowClick,
+                userData
+              )
+            }
+            style={{
+              overflowX: "auto",
+              width: "100%",
+            }}
+          />
+        </Paper>
+      </div>
 
       {deleteModal.showModal && (
         <DeleteModal
@@ -506,7 +753,7 @@ export default function CreateTable({ inputTableType, userData, onSuccess }) {
           onSuccess={onSuccess}
         />
       )}
-    </Paper>
+    </>
   );
 }
 
