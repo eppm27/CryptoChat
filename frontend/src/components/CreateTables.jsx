@@ -187,7 +187,7 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
             ${payload[0].value?.toFixed(4)}
           </p>
           <p className="text-xs text-gray-600">
-            {label ? new Date(label).toLocaleDateString() : ''}
+            {label && !isNaN(label) ? new Date(Number(label)).toLocaleDateString() : ''}
           </p>
         </div>
       );
@@ -371,6 +371,7 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
                     />
                   </linearGradient>
                 </defs>
+                <XAxis dataKey="time" hide />
                 <Tooltip content={<CustomTooltip />} />
                 <Area
                   type="monotone"
@@ -703,6 +704,7 @@ function rowContent(
                       />
                     </linearGradient>
                   </defs>
+                  <XAxis dataKey="time" hide />
                   <Tooltip 
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
@@ -712,7 +714,7 @@ function rowContent(
                               ${payload[0].value?.toFixed(4)}
                             </p>
                             <p className="text-xs text-gray-600">
-                              {label ? new Date(label).toLocaleDateString() : '7-day trend'}
+                              {label && !isNaN(label) ? new Date(Number(label)).toLocaleDateString() : '7-day trend'}
                             </p>
                           </div>
                         );
@@ -833,10 +835,17 @@ export default function CreateTable({ inputTableType, userData, onSuccess, onRow
 
           cryptos.map((crypto) => {
             const sparkData = crypto.sparkline_in_7d;
-            const formattedData = sparkData.map((price, index) => ({
-              time: index,
-              price: price,
-            }));
+            const formattedData = sparkData.map((price, index) => {
+              // Create proper dates for the last 7 days
+              // Sparkline typically has 168 data points (7 days * 24 hours)
+              const now = new Date();
+              const hoursBack = sparkData.length - 1 - index;
+              const date = new Date(now.getTime() - (hoursBack * 60 * 60 * 1000));
+              return {
+                time: date.getTime(), // Use timestamp for proper date handling
+                price: price,
+              };
+            });
 
             const priceChange1h = crypto.price_change_percentage_1h_in_currency;
             const priceChange24h =
