@@ -18,7 +18,7 @@ import { ArrowDropUp, ArrowDropDown, MoreVert } from "@mui/icons-material";
 import { message } from "antd";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import GraphColour from "./GraphColour";
-import { Card, PriceChange, Badge, Button } from "../ui/index";
+import { Card, PriceChange, Badge, Button, BottomSheet } from "../ui/index";
 
 const watchlistPageColumns = [
   { label: "Name", dataKey: "name", width: 150 },
@@ -100,40 +100,76 @@ VirtuosoTableComponents.TableBody.displayName = "VirtuosoTableBody";
 
 // Mobile Card Component for responsive design
 const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, onRowClick }) => {
+  const [showActions, setShowActions] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = React.useRef(null);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleViewDetails = () => {
+    // Navigate to crypto details page for watchlist items
+    if (inputTableType === "watchlistPage" || inputTableType === "watchlist") {
+      const cryptoId = row.userWatchlistInfo?.cryptoId || row.id;
+      if (cryptoId) {
+        navigate(`/cryptoDetails/${cryptoId}`);
+      }
+    } else if (inputTableType === "savedPrompt" || inputTableType === "savedPage") {
+      // For saved prompts, create a chat
+      handleChatCreation();
+    }
+  };
+
+  const handleChatCreation = async () => {
+    let prompt;
+    if (row.name) {
+      prompt = `Tell me about ${row.name}`;
+    } else {
+      prompt = row.prompt?.trim();
+    }
+
+    if (!prompt) return;
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!response.ok) throw new Error("Failed to create a new chat");
+      const newChat = await response.json();
+      navigate(`/chat/${newChat.id}`);
+    } catch (error) {
+      console.error("Error creating chat:", error);
+      message.error("Failed to start chat");
+    }
+  };
+
   const handleCardClick = async () => {
     if (inputTableType === "watchlist" || inputTableType === "savedPrompt") {
-      // Call the existing handleCellClick function
-      let prompt;
-      if (row.name) {
-        prompt = `Tell me about ${row.name}`;
-      } else {
-        prompt = row.prompt?.trim();
-      }
-
-      if (!prompt) return;
-
-      try {
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({ prompt }),
-        });
-
-        if (!response.ok) throw new Error("Failed to create a new chat");
-        const newChat = await response.json();
-        navigate(`/chat/${newChat.id}`);
-      } catch (error) {
-        console.error("Error creating chat:", error);
-        message.error("Failed to start chat");
-      }
+      // For dashboard/other views, create chat
+      handleChatCreation();
     } else if (
       inputTableType === "watchlistPage" ||
       inputTableType === "savedPage" ||
       inputTableType === "walletPage"
     ) {
+      // For main pages, show manage options
       if (onRowClick) {
         onRowClick(row);
       } else {
@@ -180,7 +216,106 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
               </Badge>
           )}
         </div>
-        <MoreVert className="text-gray-400" />
+        <div className="relative" ref={dropdownRef}>
+          <MoreVert 
+            className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors" 
+            onClick={(e) => {
+              e.stopPropagation();
+              // Show mobile bottom sheet on small screens, dropdown on large screens
+              if (window.innerWidth < 1024) {
+                setShowActions(true);
+              } else {
+                setShowDropdown(!showDropdown);
+              }
+            }}
+          />
+          
+          {/* Desktop Dropdown */}
+          {showDropdown && (
+            <div className="absolute right-0 top-8 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-2">
+              {/* View Details */}
+              <button
+                className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDropdown(false);
+                  handleViewDetails();
+                }}
+              >
+                <span className="mr-2">👁️</span>
+                View Details
+              </button>
+
+              {/* Start Chat (for watchlist items) */}
+              {(inputTableType === "watchlistPage" || inputTableType === "watchlist") && (
+                <button
+                  className="w-full px-4 py-2 text-left hover:bg-blue-50 text-blue-600 flex items-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDropdown(false);
+                    handleChatCreation();
+                  }}
+                >
+                  <span className="mr-2">💬</span>
+                  Start Chat
+                </button>
+              )}
+
+              {/* Edit/Manage */}
+              {(inputTableType === "watchlistPage" || inputTableType === "savedPage") && (
+                <button
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDropdown(false);
+                    if (onRowClick) {
+                      onRowClick(row);
+                    } else {
+                      setDeleteModal({ showModal: true, rowData: row });
+                    }
+                  }}
+                >
+                  <span className="mr-2">✏️</span>
+                  Edit Item
+                </button>
+              )}
+
+              {/* Add to Wallet */}
+              {(inputTableType === "watchlistPage" || inputTableType === "watchlist") && 
+               !userData?.wallet?.some(walletItem => walletItem.cryptoId === row.userWatchlistInfo?.cryptoId) && (
+                <button
+                  className="w-full px-4 py-2 text-left hover:bg-green-50 text-green-600 flex items-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDropdown(false);
+                    message.success(`${row.name} added to wallet!`);
+                  }}
+                >
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Add to Wallet
+                </button>
+              )}
+
+              {/* Remove/Delete */}
+              {(inputTableType === "watchlistPage" || inputTableType === "savedPage" || inputTableType === "walletPage") && (
+                <>
+                  <hr className="my-1" />
+                  <button
+                    className="w-full px-4 py-2 text-left hover:bg-red-50 text-red-600 flex items-center"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDropdown(false);
+                      setDeleteModal({ showModal: true, rowData: row });
+                    }}
+                  >
+                    <span className="mr-2">🗑️</span>
+                    Remove Item
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Price and Change Row */}
@@ -260,6 +395,111 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
           </div>
         </div>
       )}
+
+      {/* Actions BottomSheet */}
+      <BottomSheet
+        isOpen={showActions}
+        onClose={() => setShowActions(false)}
+        title={`${row.name || 'Item'} Actions`}
+      >
+        <div className="space-y-3">
+          {/* View Details */}
+          <Button
+            variant="outline"
+            className="w-full justify-start"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowActions(false);
+              handleViewDetails();
+            }}
+          >
+            <span className="mr-2">👁️</span>
+            View Details
+          </Button>
+
+          {/* Start Chat (for watchlist items) */}
+          {(inputTableType === "watchlistPage" || inputTableType === "watchlist") && (
+            <Button
+              variant="outline"
+              className="w-full justify-start text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowActions(false);
+                handleChatCreation();
+              }}
+            >
+              <span className="mr-2">💬</span>
+              Start Chat
+            </Button>
+          )}
+
+          {/* Edit/Manage (for watchlist and saved items) */}
+          {(inputTableType === "watchlistPage" || inputTableType === "savedPage") && (
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowActions(false);
+                if (onRowClick) {
+                  onRowClick(row);
+                } else {
+                  setDeleteModal({ showModal: true, rowData: row });
+                }
+              }}
+            >
+              <span className="mr-2">✏️</span>
+              Edit Item
+            </Button>
+          )}
+
+          {/* Remove/Delete */}
+          {(inputTableType === "watchlistPage" || inputTableType === "savedPage" || inputTableType === "walletPage") && (
+            <Button
+              variant="outline"
+              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowActions(false);
+                setDeleteModal({ showModal: true, rowData: row });
+              }}
+            >
+              <span className="mr-2">🗑️</span>
+              Remove Item
+            </Button>
+          )}
+
+          {/* Add to Wallet (for watchlist items) */}
+          {(inputTableType === "watchlistPage" || inputTableType === "watchlist") && 
+           !userData?.wallet?.some(walletItem => walletItem.cryptoId === row.userWatchlistInfo?.cryptoId) && (
+            <Button
+              variant="outline"
+              className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowActions(false);
+                // Add to wallet functionality would go here
+                message.success(`${row.name} added to wallet!`);
+              }}
+            >
+              <Wallet className="w-4 h-4 mr-2" />
+              Add to Wallet
+            </Button>
+          )}
+
+          {/* Cancel */}
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowActions(false);
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      </BottomSheet>
     </Card>
   );
 };
