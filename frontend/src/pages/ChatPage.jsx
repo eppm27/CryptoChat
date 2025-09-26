@@ -181,7 +181,7 @@ const ChatPage = () => {
     hasUserSentMessage.current = true;
 
     try {
-      const response = await fetch(`/api/llm/chat/${currentChatId}`, {
+      const response = await fetch(`/api/chat/${currentChatId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -243,6 +243,14 @@ const ChatPage = () => {
                 botMessage.visualization = data.visualization;
                 // Update immediately for visualization
                 updateBotMessage();
+              } else if (data.type === "complete") {
+                // Handle the final complete message from backend
+                botMessage.content = data.text || botMessage.content;
+                if (updateTimeout) clearTimeout(updateTimeout);
+                updateBotMessage();
+              } else if (data.type === "start") {
+                // Initial message from backend - no action needed
+                console.log("LLM processing started");
               }
             } catch (e) {
               console.error("Error parsing SSE data:", e);
