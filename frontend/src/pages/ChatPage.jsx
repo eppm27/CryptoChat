@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import {
@@ -26,8 +26,12 @@ const ChatPage = () => {
   const hasUserSentMessage = useRef(false);
   const inputRef = useRef(null);
 
+  // Generate unique message ID
+  const generateMessageId = () => `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
   const getWelcomeMsg = () => [
     {
+      id: 'welcome-msg',
       content:
         "👋 Hello! I'm **CryptoGPT**, your AI crypto assistant.\n\nI can help you with:\n• Real-time crypto prices and market data\n• Technical analysis and trends\n• Investment strategies and insights\n• News and market updates\n\nTry asking me: *'What's the current price of Bitcoin?'* or *'Show me the top trending cryptocurrencies'* 📈",
       role: "chatBot",
@@ -35,9 +39,7 @@ const ChatPage = () => {
       visualization: null,
       timestamp: new Date().toISOString(),
     },
-  ];
-
-  const initialiseNewChat = async () => {
+  ];  const initialiseNewChat = async () => {
     try {
       const chatData = await createChat();
       return chatData.chat;
@@ -121,7 +123,12 @@ const ChatPage = () => {
         const chatData = await getChatMessages(chatId);
 
         if (chatData.messages && chatData.messages.length > 0) {
-          setMessages(chatData.messages);
+          // Ensure all messages have IDs for stable rendering
+          const messagesWithIds = chatData.messages.map(msg => ({
+            ...msg,
+            id: msg.id || generateMessageId()
+          }));
+          setMessages(messagesWithIds);
           hasUserSentMessage.current = true;
         } else {
           setMessages(getWelcomeMsg());
@@ -157,11 +164,12 @@ const ChatPage = () => {
     initializeChat();
   }, [chatId, location.state, navigate]);
 
-  const handleSendMessage = async (messageText = null) => {
+  const handleSendMessage = useCallback(async (messageText = null) => {
     const textToSend = messageText || input.trim();
     if (!textToSend || isLoading) return;
 
     const userMessage = {
+      id: generateMessageId(),
       content: textToSend,
       role: "user",
       timestamp: new Date().toISOString(),
@@ -184,7 +192,9 @@ const ChatPage = () => {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      const botMessageId = generateMessageId();
       let botMessage = {
+        id: botMessageId,
         content: "",
         role: "chatBot",
         isError: false,
@@ -194,9 +204,27 @@ const ChatPage = () => {
 
       setMessages((prev) => [...prev, botMessage]);
 
+      // Throttle updates to reduce flickering during streaming
+      let updateTimeout = null;
+      const updateBotMessage = () => {
+        setMessages((prev) => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+          if (updated[lastIndex]?.id === botMessageId) {
+            updated[lastIndex] = { ...botMessage };
+          }
+          return updated;
+        });
+      };
+
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          // Final update
+          if (updateTimeout) clearTimeout(updateTimeout);
+          updateBotMessage();
+          break;
+        }
 
         const chunk = decoder.decode(value);
         const lines = chunk.split("\n");
@@ -208,18 +236,13 @@ const ChatPage = () => {
 
               if (data.type === "content") {
                 botMessage.content += data.content;
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { ...botMessage };
-                  return updated;
-                });
+                // Throttle content updates to reduce flickering
+                if (updateTimeout) clearTimeout(updateTimeout);
+                updateTimeout = setTimeout(updateBotMessage, 50);
               } else if (data.type === "visualization") {
                 botMessage.visualization = data.visualization;
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { ...botMessage };
-                  return updated;
-                });
+                // Update immediately for visualization
+                updateBotMessage();
               }
             } catch (e) {
               console.error("Error parsing SSE data:", e);
@@ -232,6 +255,7 @@ const ChatPage = () => {
       setMessages((prev) => [
         ...prev,
         {
+          id: generateMessageId(),
           content: "Sorry, I encountered an error. Please try again.",
           role: "chatBot",
           isError: true,
@@ -241,9 +265,9 @@ const ChatPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [input, isLoading, currentChatId]);
 
-  const handleSavePrompt = async (content) => {
+  const handleSavePrompt = useCallback(async (content) => {
     try {
       await addPromptToSaved(content);
       message.success("Prompt saved successfully!");
@@ -251,24 +275,41 @@ const ChatPage = () => {
       console.error("Error saving prompt:", error);
       message.error("Failed to save prompt");
     }
-  };
+  }, []);
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop =
-        chatContainerRef.current.scrollHeight;
+  // Memoized input handlers to prevent re-renders
+  const handleInputChange = useCallback((e) => {
+    setInput(e.target.value);
+  }, []);
+
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
+  }, [handleSendMessage]);
+
+  // Auto-scroll to bottom - optimized to reduce flickering
+  const previousMessageCount = useRef(0);
+  useEffect(() => {
+    if (chatContainerRef.current && messages.length > previousMessageCount.current) {
+      requestAnimationFrame(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      });
+    }
+    previousMessageCount.current = messages.length;
   }, [messages]);
 
-  const MessageBubble = ({ message }) => {
+  const MessageBubble = React.memo(({ message, onSavePrompt }) => {
     const isUser = message.role === "user";
     const isBot = message.role === "chatBot";
 
     return (
       <div
         className={cn(
-          "flex w-full animate-fade-in-up",
+          "flex w-full",
           isUser ? "justify-end" : "justify-start"
         )}
       >
@@ -293,7 +334,7 @@ const ChatPage = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleSavePrompt(message.content)}
+                onClick={() => onSavePrompt(message.content)}
                 className="h-6 w-6 p-0"
               >
                 <BookmarkIcon />
@@ -331,12 +372,14 @@ const ChatPage = () => {
         </div>
       </div>
     );
-  };
+  });
+
+  MessageBubble.displayName = 'MessageBubble';
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-gradient-to-b from-neutral-50 to-primary-50/20 z-10">
+    <div className="fixed inset-0 flex flex-col bg-gradient-to-b from-neutral-50 to-primary-50/20 z-10 pt-14 md:pt-16">
       {/* Chat Header */}
-      <div className="flex-shrink-0 bg-white/95 backdrop-blur-md border-b border-neutral-200/50 px-4 py-3 mt-16 md:mt-20">
+      <div className="flex-shrink-0 bg-white/95 backdrop-blur-md border-b border-neutral-200/50 px-4 py-3 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <button
@@ -405,8 +448,12 @@ const ChatPage = () => {
             ))}
           </div>
         ) : (
-          messages.map((message, index) => (
-            <MessageBubble key={index} message={message} index={index} />
+          messages.map((message) => (
+            <MessageBubble 
+              key={message.id || message.timestamp} 
+              message={message} 
+              onSavePrompt={handleSavePrompt}
+            />
           ))
         )}
 
@@ -446,14 +493,9 @@ const ChatPage = () => {
               <textarea
                 ref={inputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                placeholder="Ask me about crypto prices, trends, or strategies..."
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask me anything about Crypto..."
                 className="w-full min-h-[52px] max-h-32 px-5 py-4 pr-14 text-base border-2 border-neutral-200 rounded-2xl bg-white/90 backdrop-blur-sm placeholder-neutral-400 resize-none transition-all duration-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none hover:border-neutral-300"
                 rows={1}
                 style={{
