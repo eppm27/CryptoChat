@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllChats, getChatMessages, createChat } from "../services/userAPI";
 import DeleteChatModal from "../components/DeleteChatModal";
-import { Skeleton } from "@mui/material";
+import { Button, Card, Skeleton, GlassCard } from "../ui/index";
 
 const ChatListPage = () => {
   const [chats, setChats] = useState(null);
@@ -59,99 +59,201 @@ const ChatListPage = () => {
     }
   };
 
+  // Icons
+  const PlusIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+      />
+    </svg>
+  );
+
+  const ChatIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+      />
+    </svg>
+  );
+
+  const TrashIcon = () => (
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+      />
+    </svg>
+  );
+
+  const ClockIcon = () => (
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+
+  useEffect(() => {
+    document.title = "Chats - CryptoChat";
+  }, []);
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-      <div className="w-full max-w-3xl p-4">
+    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-primary-50/20">
+      <div className="container-mobile py-6 space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold text-neutral-900">Your Chats</h1>
+          <p className="text-neutral-600">Continue your crypto conversations</p>
+        </div>
+
         {/* Error Message */}
         {error && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
-            <p>{error}</p>
-          </div>
+          <Card className="border-danger-200 bg-danger-50">
+            <div className="p-4 flex items-center space-x-3">
+              <div className="w-5 h-5 text-danger-600">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <p className="text-danger-700 font-medium">{error}</p>
+            </div>
+          </Card>
         )}
 
         {/* New Chat Button */}
-        <button
+        <Button
           onClick={handleNewChat}
-          className="w-full p-3 mb-4 bg-blue-500 text-white font-bold rounded-lg shadow-md hover:bg-blue-600 transition"
+          size="lg"
+          className="w-full"
+          icon={<PlusIcon />}
         >
-          + Start New Chat
-        </button>
+          Start New Chat
+        </Button>
 
         {/* Chat List */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div className="space-y-4">
           {chats ? (
             chats.length === 0 ? (
-              <p className="p-4 text-gray-600">
-                No chats available. Start a new chat!
-              </p>
-            ) : (
-              chats.map((chat) => (
-                <div
-                  key={chat._id}
-                  className="p-4 border-b last:border-b-0 flex justify-between items-start hover:bg-gray-100 transition"
-                >
-                  <div
-                    className="cursor-pointer flex-grow"
-                    onClick={() => handleChatClick(chat._id)}
-                  >
-                    <h2 className="text-lg font-semibold">
-                      {chat.title || "Untitled Chat"}
-                    </h2>
-                    <p className="text-sm text-gray-600">
-                      {chat.lastMessage || "No messages yet"}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      Last updated:{" "}
-                      {chat.updatedAt
-                        ? new Date(chat.updatedAt).toLocaleString()
-                        : "Unknown"}
+              <Card className="p-8 text-center">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+                      No chats yet
+                    </h3>
+                    <p className="text-neutral-600">
+                      Start your first conversation with CryptoGPT!
                     </p>
                   </div>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setChatToDelete(chat);
-                      setShowDeleteModal(true);
-                    }}
-                    className="ml-2 text-red-500 hover:text-red-700 transition"
-                    title="Delete Chat"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="lucide lucide-trash2-icon lucide-trash-2"
-                    >
-                      <path d="M3 6h18" />
-                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                      <line x1="10" x2="10" y1="11" y2="17" />
-                      <line x1="14" x2="14" y1="11" y2="17" />
-                    </svg>
-                  </button>
                 </div>
+              </Card>
+            ) : (
+              chats.map((chat) => (
+                <Card
+                  key={chat._id}
+                  hover
+                  className="cursor-pointer group"
+                  onClick={() => handleChatClick(chat._id)}
+                >
+                  <div className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="mb-2">
+                          <h3 className="text-lg font-semibold text-neutral-900 truncate">
+                            {chat.title || "Untitled Chat"}
+                          </h3>
+                        </div>
+
+                        <p className="text-neutral-600 line-clamp-2 mb-3">
+                          {chat.lastMessage || "No messages yet"}
+                        </p>
+
+                        <div className="flex items-center text-sm text-neutral-500">
+                          <ClockIcon />
+                          <span className="ml-1">
+                            {chat.updatedAt
+                              ? new Date(chat.updatedAt).toLocaleDateString(
+                                  [],
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )
+                              : "Unknown"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setChatToDelete(chat);
+                          setShowDeleteModal(true);
+                        }}
+                        className="opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-neutral-500 hover:text-danger-600 w-9 h-9 p-0"
+                        title="Delete Chat"
+                      >
+                        <TrashIcon />
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
               ))
             )
           ) : (
-            <>
+            <div className="space-y-4">
               {[...Array(5)].map((_, index) => (
-                <div
-                  key={index}
-                  className="p-4 border-b last:border-b-0 flex flex-col gap-2"
-                >
-                  <Skeleton variant="text" width="60%" height={24} />
-                  <Skeleton variant="text" width="80%" height={18} />
-                  <Skeleton variant="text" width="40%" height={14} />
-                </div>
+                <Card key={index} className="p-6">
+                  <div className="flex items-start space-x-3">
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-2/3" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                  </div>
+                </Card>
               ))}
-            </>
+            </div>
           )}
         </div>
 

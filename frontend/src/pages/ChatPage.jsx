@@ -1,8 +1,4 @@
-import React, {
-  useState,
-  useRef,
-  useEffect,
-} from "react";
+import React, { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import {
@@ -33,10 +29,11 @@ const ChatPage = () => {
   const getWelcomeMsg = () => [
     {
       content:
-        "Hello! I'm your crypto assistant. Ask me something like: 'What's the current price of Bitcoin?' 📈",
+        "👋 Hello! I'm **CryptoGPT**, your AI crypto assistant.\n\nI can help you with:\n• Real-time crypto prices and market data\n• Technical analysis and trends\n• Investment strategies and insights\n• News and market updates\n\nTry asking me: *'What's the current price of Bitcoin?'* or *'Show me the top trending cryptocurrencies'* 📈",
       role: "chatBot",
       isError: false,
       visualization: null,
+      timestamp: new Date().toISOString(),
     },
   ];
 
@@ -53,26 +50,66 @@ const ChatPage = () => {
 
   // Icons
   const SendIcon = () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+      />
     </svg>
   );
 
   const BookmarkIcon = () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+      />
     </svg>
   );
 
   const SparklesIcon = () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM13 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2h-2zM5 13a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM13 13a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2z" />
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM13 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2h-2zM5 13a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM13 13a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2z"
+      />
     </svg>
   );
 
   const MicIcon = () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+      />
     </svg>
   );
 
@@ -82,7 +119,7 @@ const ChatPage = () => {
       try {
         setIsLoading(true);
         const chatData = await getChatMessages(chatId);
-        
+
         if (chatData.messages && chatData.messages.length > 0) {
           setMessages(chatData.messages);
           hasUserSentMessage.current = true;
@@ -120,8 +157,6 @@ const ChatPage = () => {
     initializeChat();
   }, [chatId, location.state, navigate]);
 
-
-
   const handleSendMessage = async (messageText = null) => {
     const textToSend = messageText || input.trim();
     if (!textToSend || isLoading) return;
@@ -132,7 +167,7 @@ const ChatPage = () => {
       timestamp: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
     hasUserSentMessage.current = true;
@@ -157,30 +192,30 @@ const ChatPage = () => {
         timestamp: new Date().toISOString(),
       };
 
-      setMessages(prev => [...prev, botMessage]);
+      setMessages((prev) => [...prev, botMessage]);
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        const lines = chunk.split("\n");
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          if (line.startsWith("data: ")) {
             try {
               const data = JSON.parse(line.slice(6));
-              
-              if (data.type === 'content') {
+
+              if (data.type === "content") {
                 botMessage.content += data.content;
-                setMessages(prev => {
+                setMessages((prev) => {
                   const updated = [...prev];
                   updated[updated.length - 1] = { ...botMessage };
                   return updated;
                 });
-              } else if (data.type === 'visualization') {
+              } else if (data.type === "visualization") {
                 botMessage.visualization = data.visualization;
-                setMessages(prev => {
+                setMessages((prev) => {
                   const updated = [...prev];
                   updated[updated.length - 1] = { ...botMessage };
                   return updated;
@@ -194,12 +229,15 @@ const ChatPage = () => {
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      setMessages(prev => [...prev, {
-        content: "Sorry, I encountered an error. Please try again.",
-        role: "chatBot",
-        isError: true,
-        timestamp: new Date().toISOString(),
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          content: "Sorry, I encountered an error. Please try again.",
+          role: "chatBot",
+          isError: true,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -218,7 +256,8 @@ const ChatPage = () => {
   // Auto-scroll to bottom
   useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
@@ -227,23 +266,29 @@ const ChatPage = () => {
     const isBot = message.role === "chatBot";
 
     return (
-      <div className={cn(
-        "flex w-full",
-        isUser ? "justify-end" : "justify-start"
-      )}>
-        <div className={cn(
-          "max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 break-words",
-          isUser 
-            ? "bg-primary-600 text-white ml-4" 
-            : "bg-white border border-neutral-200 mr-4 shadow-sm"
-        )}>
+      <div
+        className={cn(
+          "flex w-full animate-fade-in-up",
+          isUser ? "justify-end" : "justify-start"
+        )}
+      >
+        <div
+          className={cn(
+            "max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 md:px-5 md:py-4 break-words transition-all duration-200",
+            isUser
+              ? "bg-primary-600 hover:bg-primary-700 text-white ml-2 md:ml-4 shadow-lg"
+              : "bg-white border border-neutral-200 mr-2 md:mr-4 shadow-md hover:shadow-lg"
+          )}
+        >
           {isBot && !message.isError && (
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
                 <div className="w-6 h-6 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
                   <SparklesIcon />
                 </div>
-                <span className="text-sm font-medium text-neutral-600">CryptoGPT</span>
+                <span className="text-sm font-medium text-neutral-600">
+                  CryptoGPT
+                </span>
               </div>
               <Button
                 variant="ghost"
@@ -255,12 +300,14 @@ const ChatPage = () => {
               </Button>
             </div>
           )}
-          
-          <div className={cn(
-            "prose prose-sm max-w-none",
-            isUser ? "prose-invert" : "",
-            message.isError ? "text-danger-600" : ""
-          )}>
+
+          <div
+            className={cn(
+              "prose prose-sm max-w-none",
+              isUser ? "prose-invert" : "",
+              message.isError ? "text-danger-600" : ""
+            )}
+          >
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
 
@@ -270,13 +317,15 @@ const ChatPage = () => {
             </div>
           )}
 
-          <div className={cn(
-            "text-xs mt-2 opacity-70",
-            isUser ? "text-right text-primary-100" : "text-neutral-500"
-          )}>
-            {new Date(message.timestamp).toLocaleTimeString([], { 
-              hour: '2-digit', 
-              minute: '2-digit' 
+          <div
+            className={cn(
+              "text-xs mt-2 opacity-70",
+              isUser ? "text-right text-primary-100" : "text-neutral-500"
+            )}
+          >
+            {new Date(message.timestamp).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
             })}
           </div>
         </div>
@@ -285,25 +334,37 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-neutral-50 to-primary-50/20">
+    <div className="fixed inset-0 flex flex-col bg-gradient-to-b from-neutral-50 to-primary-50/20 z-10">
       {/* Chat Header */}
-      <div className="flex-shrink-0 bg-white/95 backdrop-blur-md border-b border-neutral-200/50 px-4 py-3">
+      <div className="flex-shrink-0 bg-white/95 backdrop-blur-md border-b border-neutral-200/50 px-4 py-3 mt-16 md:mt-20">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <button
               onClick={() => navigate(-1)}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 transition-colors md:hidden"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
             </button>
             <div>
               <h1 className="font-semibold text-neutral-900">CryptoGPT</h1>
-              <p className="text-sm text-neutral-500">Your AI crypto assistant</p>
+              <p className="text-sm text-neutral-500">
+                Your AI crypto assistant
+              </p>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <Button
               variant="ghost"
@@ -327,10 +388,10 @@ const ChatPage = () => {
       </div>
 
       {/* Messages Container */}
-      <div 
+      <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto px-4 py-6 space-y-6"
-        style={{ scrollBehavior: 'smooth' }}
+        className="flex-1 overflow-y-auto px-3 md:px-4 py-4 md:py-6 space-y-4 md:space-y-6 min-h-0"
+        style={{ scrollBehavior: "smooth" }}
       >
         {isLoading && messages.length === 0 ? (
           <div className="space-y-4">
@@ -356,7 +417,9 @@ const ChatPage = () => {
                 <div className="w-6 h-6 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
                   <SparklesIcon />
                 </div>
-                <span className="text-sm font-medium text-neutral-600">CryptoGPT</span>
+                <span className="text-sm font-medium text-neutral-600">
+                  CryptoGPT
+                </span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="flex space-x-1">
@@ -376,26 +439,26 @@ const ChatPage = () => {
       </div>
 
       {/* Input Section */}
-      <div className="flex-shrink-0 bg-white/95 backdrop-blur-md border-t border-neutral-200/50 p-4">
+      <div className="flex-shrink-0 bg-white/95 backdrop-blur-md border-t border-neutral-200/50 p-3 md:p-4 pb-20 md:pb-4 safe-area-bottom">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-end space-x-3">
+          <div className="flex items-end space-x-2 md:space-x-3">
             <div className="flex-1 relative">
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
+                  if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleSendMessage();
                   }
                 }}
                 placeholder="Ask me about crypto prices, trends, or strategies..."
-                className="w-full min-h-[44px] max-h-32 px-4 py-3 pr-12 text-base border border-neutral-300 rounded-2xl bg-white/80 backdrop-blur-sm placeholder-neutral-400 resize-none transition-all duration-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none"
+                className="w-full min-h-[52px] max-h-32 px-5 py-4 pr-14 text-base border-2 border-neutral-200 rounded-2xl bg-white/90 backdrop-blur-sm placeholder-neutral-400 resize-none transition-all duration-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none hover:border-neutral-300"
                 rows={1}
-                style={{ 
-                  height: 'auto',
-                  minHeight: '44px'
+                style={{
+                  height: "auto",
+                  minHeight: "52px",
                 }}
               />
               <button
@@ -412,9 +475,12 @@ const ChatPage = () => {
               </button>
             </div>
           </div>
-          
-          <div className="flex items-center justify-between mt-3 text-xs text-neutral-500">
-            <span>Press Enter to send, Shift + Enter for new line</span>
+
+          <div className="flex items-center justify-between mt-2 md:mt-3 text-xs text-neutral-500">
+            <span className="hidden md:inline">
+              Press Enter to send, Shift + Enter for new line
+            </span>
+            <span className="md:hidden">Tap send or press Enter</span>
             <span>{input.length}/2000</span>
           </div>
         </div>
