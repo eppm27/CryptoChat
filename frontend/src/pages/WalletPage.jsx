@@ -584,6 +584,7 @@ const WalletPage = () => {
           closeModal={() => setShowAddModal(false)}
           onSuccess={handleAddSuccess}
           modalType="wallet"
+          userData={_userData}
         />
       )}
     </div>
