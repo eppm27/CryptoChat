@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { fetchUserData } from "../services/userAPI.jsx";
 import { Card, Button, Skeleton, PriceChange, Badge } from "../ui";
 import { cn } from "../utils/cn";
+import AddModal from "../components/AddModal.jsx";
 
 const WalletPage = () => {
   const [walletData, setWalletData] = useState([]);
@@ -9,7 +10,8 @@ const WalletPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [totalValue, setTotalValue] = useState(0);
   const [totalChange24h, setTotalChange24h] = useState(0);
-  const [_showAddModal, setShowAddModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -35,12 +37,43 @@ const WalletPage = () => {
         }
       } catch (err) {
         console.error("Error fetching user data:", err);
+        setError(err.message || "Failed to load wallet data");
       } finally {
         setIsLoading(false);
       }
     };
     loadUserData();
   }, []);
+
+  const handleAddSuccess = () => {
+    // Reload user data to refresh wallet
+    const loadUserData = async () => {
+      try {
+        const user = await fetchUserData();
+        setWalletData(user.wallet || []);
+        setUserData(user);
+        
+        // Recalculate totals
+        if (user.wallet && user.wallet.length > 0) {
+          const total = user.wallet.reduce((sum, item) => {
+            return sum + (parseFloat(item.currentPrice || 0) * parseFloat(item.quantity || 0));
+          }, 0);
+          
+          const totalChange = user.wallet.reduce((sum, item) => {
+            const itemValue = parseFloat(item.currentPrice || 0) * parseFloat(item.quantity || 0);
+            const change = parseFloat(item.change24h || 0);
+            return sum + (itemValue * change / 100);
+          }, 0);
+          
+          setTotalValue(total);
+          setTotalChange24h(totalChange);
+        }
+      } catch (err) {
+        console.error("Error fetching user data:", err);
+      }
+    };
+    loadUserData();
+  };
 
   const WalletItem = ({ item }) => {
     const itemValue = parseFloat(item.currentPrice || 0) * parseFloat(item.quantity || 0);
@@ -253,6 +286,31 @@ const WalletPage = () => {
           )}
         </div>
 
+        {/* Error Display */}
+        {error && (
+          <Card className="mb-6 p-4 bg-danger-50 border-danger-200">
+            <div className="flex items-center gap-3">
+              <div className="h-5 w-5 text-danger-600">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-danger-900">Error Loading Wallet</h3>
+                <p className="text-sm text-danger-700">{error}</p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {setError(null); window.location.reload();}}
+                className="ml-auto"
+              >
+                Retry
+              </Button>
+            </div>
+          </Card>
+        )}
+
         {/* Holdings */}
         {walletData.length === 0 ? (
           <Card className="text-center py-12">
@@ -341,6 +399,15 @@ const WalletPage = () => {
           </Card>
         )}
       </div>
+      
+      {/* Add Crypto Modal */}
+      {showAddModal && (
+        <AddModal
+          closeModal={() => setShowAddModal(false)}
+          onSuccess={handleAddSuccess}
+          modalType="wallet"
+        />
+      )}
     </div>
   );
 };
