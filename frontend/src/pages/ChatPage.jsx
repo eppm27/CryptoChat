@@ -125,10 +125,11 @@ const ChatPage = () => {
         const chatData = await getChatMessages(chatId);
 
         if (chatData.messages && chatData.messages.length > 0) {
-          // Ensure all messages have IDs for stable rendering
+          // Ensure all messages have IDs and proper timestamp mapping for stable rendering
           const messagesWithIds = chatData.messages.map((msg) => ({
             ...msg,
-            id: msg.id || generateMessageId(),
+            id: msg._id || msg.id || generateMessageId(),
+            timestamp: msg.createdAt || msg.timestamp || new Date().toISOString(),
           }));
           setMessages(messagesWithIds);
           hasUserSentMessage.current = true;
@@ -249,7 +250,19 @@ const ChatPage = () => {
                   updateBotMessage();
                 } else if (data.type === "complete") {
                   // Handle the final complete message from backend
-                  botMessage.content = data.text || botMessage.content;
+                  // Update with the complete message data from database
+                  if (data.llmMessage) {
+                    botMessage = {
+                      ...botMessage,
+                      id: data.llmMessage._id || botMessage.id,
+                      content: data.llmMessage.content || data.llmMessage.text || botMessage.content,
+                      visualization: data.llmMessage.visualization || botMessage.visualization,
+                      timestamp: data.llmMessage.createdAt || botMessage.timestamp,
+                      isVisualization: data.llmMessage.isVisualization || (botMessage.visualization != null),
+                    };
+                  } else {
+                    botMessage.content = data.text || botMessage.content;
+                  }
                   if (updateTimeout) clearTimeout(updateTimeout);
                   updateBotMessage();
                 } else if (data.type === "start") {
@@ -372,7 +385,13 @@ const ChatPage = () => {
 
           {message.visualization && (
             <div className="mt-4 rounded-xl overflow-hidden">
-              <ChatChart visualization={message.visualization} />
+              <ChatChart 
+                visualization={
+                  Array.isArray(message.visualization) 
+                    ? message.visualization[0] 
+                    : message.visualization
+                } 
+              />
             </div>
           )}
 
@@ -382,7 +401,7 @@ const ChatPage = () => {
               isUser ? "text-right text-primary-100" : "text-neutral-500"
             )}
           >
-            {new Date(message.timestamp).toLocaleTimeString([], {
+            {new Date(message.timestamp || message.createdAt || new Date()).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             })}
