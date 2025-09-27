@@ -212,7 +212,6 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
             ) && (
               <Badge variant="secondary" className="text-xs">
                 <Wallet className="w-3 h-3 mr-1" />
-                Wallet
               </Badge>
           )}
         </div>
