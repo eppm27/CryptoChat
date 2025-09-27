@@ -9,8 +9,8 @@ import {
 } from "../services/userAPI";
 import { Button, Card } from "./ui/index";
 import { cn } from "../utils/cn";
-
-const AddModal = ({ closeModal, onSuccess, modalType }) => {
+// Accept userData as a prop
+const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
   const [cryptos, setCryptos] = useState([]);
   const [selectedCrypto, setSelectedCrypto] = useState(null);
   const [cryptoAmount, setCryptoAmount] = useState("");
@@ -18,16 +18,16 @@ const AddModal = ({ closeModal, onSuccess, modalType }) => {
   const [savePrompt, setSavePrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [cryptoLoading, setCryptoLoading] = useState(false);
-  const [userData, setUserData] = useState();
+  // Use userData from props instead of fetching
   const [errorExist, setErrorExist] = useState(false);
   const [errorType, setErrorType] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [step, setStep] = useState(1);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const walletEntries = userData?.wallet ?? [];
-  const watchlistEntries = userData?.watchlist ?? [];
-  const savedPrompts = userData?.savedPrompts ?? [];
+  const walletEntries = (userData?.wallet) ?? [];
+  const watchlistEntries = (userData?.watchlist) ?? [];
+  const savedPrompts = (userData?.savedPrompts) ?? [];
 
   const filteredCryptos = useMemo(() => {
     if (!searchQuery) {
@@ -185,34 +185,6 @@ const AddModal = ({ closeModal, onSuccess, modalType }) => {
 
   useEffect(() => {
     let isMounted = true;
-
-    const loadUserData = async () => {
-      try {
-        const response = await fetch("/user/user-data", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch user data");
-        }
-
-        const data = await response.json();
-        if (isMounted) {
-          setUserData(data.user);
-        }
-      } catch (err) {
-        console.error("Error fetching user data:", err);
-        if (isMounted) {
-          message.error("Unable to load user data. Some actions may fail.");
-          setUserData({ wallet: [], watchlist: [], savedPrompts: [] });
-        }
-      }
-    };
-
     const loadCryptos = async () => {
       if (modalType === "wallet" || modalType === "watchlist") {
         setCryptoLoading(true);
@@ -239,10 +211,7 @@ const AddModal = ({ closeModal, onSuccess, modalType }) => {
         }
       }
     };
-
-    loadUserData();
     loadCryptos();
-
     return () => {
       isMounted = false;
     };

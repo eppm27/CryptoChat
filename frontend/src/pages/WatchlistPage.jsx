@@ -141,6 +141,7 @@ const WatchlistPage = () => {
             closeModal={closeModal}
             onSuccess={handleAddedSuccessfully}
             modalType="watchlist"
+            userData={userData}
           />
         )}
       </div>
