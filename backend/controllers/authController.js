@@ -1,12 +1,12 @@
-const jwt = require('jsonwebtoken');
-const User = require('../dbSchema/userSchema');
+const jwt = require("jsonwebtoken");
+const User = require("../dbSchema/userSchema");
 const {
   transporter,
   getPasswordResetURL,
   resetPasswordTemplate,
-} = require('../services/emailService');
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
+} = require("../services/emailService");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 // Register Controller
 const register = async (req, res) => {
@@ -16,7 +16,7 @@ const register = async (req, res) => {
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: "User already exists" });
     }
 
     // Create new user
@@ -25,19 +25,19 @@ const register = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
+      expiresIn: "1h",
     });
 
-    res.cookie('token', token, {
+    res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === "production", // HTTPS only in production
+      sameSite: "strict",
       maxAge: 3600000, // 1 hr JWT expiry
     });
-    res.status(201).json({ message: 'Registration successful' });
+    res.status(201).json({ message: "Registration successful" });
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ message: 'Something went wrong' });
+    console.error("Error:", error);
+    res.status(500).json({ message: "Something went wrong" });
   }
 };
 
@@ -48,44 +48,44 @@ const login = async (req, res) => {
 
     // Check inputs
     if (!(email && password)) {
-      return res.status(400).json({ message: 'All input is required' });
+      return res.status(400).json({ message: "All input is required" });
     }
 
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ message: "Invalid credentials" });
     }
 
     // Compare passwords
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ message: "Invalid credentials" });
     }
 
     // Generate JWT token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
+      expiresIn: "1h",
     });
 
-    res.cookie('token', token, {
+    res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === "production", // HTTPS only in production
+      sameSite: "strict",
       maxAge: 3600000, // 1 hr JWT expiry
     });
 
-    res.status(200).json({ message: 'Login successful' });
+    res.status(200).json({ message: "Login successful" });
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ message: 'Something went wrong' });
+    console.error("Error:", error);
+    res.status(500).json({ message: "Something went wrong" });
   }
 };
 
 // Logout controller
 const logout = (req, res) => {
-  res.clearCookie('token');
-  res.json({ message: 'Logged out successfully' });
+  res.clearCookie("token");
+  res.json({ message: "Logged out successfully" });
 };
 
 //// Password reset controllers ////
@@ -97,11 +97,11 @@ const generateResetToken = async (req, res) => {
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: 'no such user' });
+      return res.status(400).json({ message: "no such user" });
     }
 
     // Generate token
-    const token = crypto.randomBytes(32).toString('hex');
+    const token = crypto.randomBytes(32).toString("hex");
     const hashedToken = await bcrypt.hash(token, 10);
 
     // Set token and expiry (1 hour from now)
@@ -113,16 +113,16 @@ const generateResetToken = async (req, res) => {
     const resetURL = getPasswordResetURL(user, token);
     const emailTemplate = resetPasswordTemplate(user, resetURL);
 
-    console.log('Sending email to:', user.email);
+    console.log("Sending email to:", user.email);
     await transporter.sendMail(emailTemplate);
-    console.log('Email sent successfully!');
+    console.log("Email sent successfully!");
 
-    res.status(200).json({ message: 'Password reset link sent to email' });
+    res.status(200).json({ message: "Password reset link sent to email" });
   } catch (error) {
-    console.error('Email send error:', error);
+    console.error("Email send error:", error);
     res
       .status(500)
-      .json({ message: 'Error sending reset email', error: error.message });
+      .json({ message: "Error sending reset email", error: error.message });
   }
 };
 
@@ -138,21 +138,21 @@ const verifyResetToken = async (req, res) => {
     if (!user) {
       return res
         .status(400)
-        .json({ message: 'Password reset token is invalid or has expired' });
+        .json({ message: "Password reset token is invalid or has expired" });
     }
 
     const isValid = await bcrypt.compare(token, user.resetPasswordToken);
     if (!isValid) {
       return res
         .status(400)
-        .json({ message: 'Password reset token is invalid or has expired' });
+        .json({ message: "Password reset token is invalid or has expired" });
     }
 
-    res.status(200).json({ message: 'Token verified', userId });
+    res.status(200).json({ message: "Token verified", userId });
   } catch (error) {
     res
       .status(500)
-      .json({ message: 'Error verifying token', error: error.message });
+      .json({ message: "Error verifying token", error: error.message });
   }
 };
 
@@ -171,7 +171,7 @@ const updatePassword = async (req, res) => {
     const isValidToken = await bcrypt.compare(token, user.resetPasswordToken);
     if (!isValidToken) {
       return res.status(400).json({
-        message: 'Invalid password reset token',
+        message: "Invalid password reset token",
       });
     }
 
@@ -181,11 +181,11 @@ const updatePassword = async (req, res) => {
     user.resetPasswordExpires = undefined;
     await user.save();
 
-    res.status(200).json({ message: 'Password updated successfully' });
+    res.status(200).json({ message: "Password updated successfully" });
   } catch (error) {
     res
       .status(500)
-      .json({ message: 'Error updating password', error: error.message });
+      .json({ message: "Error updating password", error: error.message });
   }
 };
 

@@ -113,12 +113,10 @@ const updateData = async (req, res) => {
       // Not found so inserting
       { upsert: true, new: true }
     );
-    res
-      .status(200)
-      .json({
-        message: `Crypto data from ${source} updated successfully!`,
-        updated,
-      });
+    res.status(200).json({
+      message: `Crypto data from ${source} updated successfully!`,
+      updated,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

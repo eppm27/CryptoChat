@@ -1,7 +1,14 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchCryptoDetailsDatabase } from "../services/cryptoAPI";
-import { Card, Button, Input, Badge, Skeleton, PriceChange } from "../components/ui/index";
+import {
+  Card,
+  Button,
+  Input,
+  Badge,
+  Skeleton,
+  PriceChange,
+} from "../components/ui/index";
 import { cn } from "../utils/cn";
 
 function CryptoExplorePage() {

@@ -1,11 +1,11 @@
-const axios = require('axios');
-require('dotenv').config({ path: '../.env' });
-const Crypto = require('../dbSchema/cryptoSchema');
-const CryptoIndicator = require('../dbSchema/cryptoIndicatorSchema');
-const cron = require('node-cron');
+const axios = require("axios");
+require("dotenv").config({ path: "../.env" });
+const Crypto = require("../dbSchema/cryptoSchema");
+const CryptoIndicator = require("../dbSchema/cryptoIndicatorSchema");
+const cron = require("node-cron");
 // Alpha Vantage API configuration
 const ALPHA_VANTAGE_IND_KEY = process.env.ALPHA_VANTAGE_IND_KEY;
-const AV_BASE_URL = 'https://www.alphavantage.co/query';
+const AV_BASE_URL = "https://www.alphavantage.co/query";
 
 // Fetch top 100 cryptos from database
 async function getTopCryptos() {
@@ -13,14 +13,14 @@ async function getTopCryptos() {
     const cryptos = await Crypto.find()
       .sort({ market_cap_rank: 1 })
       .limit(10)
-      .select('_id symbol name');
+      .select("_id symbol name");
     // Ensure symbols are uppercase
     return cryptos.map((crypto) => ({
       ...crypto.toObject(),
       symbol: crypto.symbol.toUpperCase(),
     }));
   } catch (error) {
-    console.error('Error fetching cryptos:', error);
+    console.error("Error fetching cryptos:", error);
     return [];
   }
 }
@@ -30,22 +30,22 @@ async function fetchRSI(symbol) {
   try {
     const response = await axios.get(AV_BASE_URL, {
       params: {
-        function: 'RSI',
+        function: "RSI",
         symbol: symbol,
-        interval: 'daily',
+        interval: "daily",
         time_period: 14,
-        series_type: 'close',
+        series_type: "close",
         apikey: ALPHA_VANTAGE_IND_KEY,
       },
       timeout: 10000,
     });
 
-    if (!response.data || !response.data['Technical Analysis: RSI']) {
+    if (!response.data || !response.data["Technical Analysis: RSI"]) {
       console.warn(`No RSI data for ${symbol}`);
       return null;
     }
 
-    const technicalData = response.data['Technical Analysis: RSI'];
+    const technicalData = response.data["Technical Analysis: RSI"];
     const dataPoints = Object.entries(technicalData).map(([date, values]) => ({
       date: new Date(date),
       value: parseFloat(values.RSI),
@@ -63,23 +63,23 @@ async function fetchRSI(symbol) {
 
 // Store RSI data in MongoDB
 async function storeRSIData(crypto, rsiData) {
-  console.log('rsi data for:', crypto._id);
-  console.log('rsi data for:', rsiData);
+  console.log("rsi data for:", crypto._id);
+  console.log("rsi data for:", rsiData);
 
   // hardcorded values to fetch data since limited api calls
   try {
     const updateDoc = {
       cryptoId: crypto._id,
       symbol: crypto.symbol.toUpperCase(),
-      interval: 'daily',
+      interval: "daily",
       time_period: 14,
-      series_type: 'close',
-      indicator: 'RSI',
+      series_type: "close",
+      indicator: "RSI",
       data: rsiData.data,
       lastUpdated: rsiData.lastUpdated,
     };
     await CryptoIndicator.findOneAndUpdate(
-      { cryptoId: crypto._id, indicator: 'RSI' },
+      { cryptoId: crypto._id, indicator: "RSI" },
       updateDoc,
       { upsert: true, new: true }
     );
@@ -98,7 +98,7 @@ async function needsUpdate(cryptoId) {
   try {
     const indicator = await CryptoIndicator.findOne({
       cryptoId: cryptoId,
-      indicator: 'RSI',
+      indicator: "RSI",
     });
 
     if (!indicator) {
@@ -110,7 +110,7 @@ async function needsUpdate(cryptoId) {
 
     return now - indicator.updatedAt > oneDayInMs;
   } catch (error) {
-    console.error('Error checking update status:', error);
+    console.error("Error checking update status:", error);
     return true; // If there's an error, proceed with update
   }
 }
@@ -135,10 +135,10 @@ async function fetchAndStoreRSIData() {
     }
   }
 
-  console.log('RSI data update completed');
+  console.log("RSI data update completed");
 }
 
-cron.schedule('0 2 * * *', () => {
-  console.log('Running scheduled RSI update...');
+cron.schedule("0 2 * * *", () => {
+  console.log("Running scheduled RSI update...");
   fetchAndStoreRSIData();
 });

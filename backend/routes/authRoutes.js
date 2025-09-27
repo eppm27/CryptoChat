@@ -7,7 +7,7 @@ const {
   generateResetToken,
   verifyResetToken,
   updatePassword,
-} = require('../controllers/authController.js');
+} = require("../controllers/authController.js");
 
 // Register Route
 router.post("/register", register);
@@ -19,8 +19,8 @@ router.post("/login", login);
 router.post("/logout", logout);
 
 // Reset password routes
-router.post('/password/reset', generateResetToken);
-router.get('/password/reset/:userId/:token', verifyResetToken);
-router.post('/password/update', updatePassword);
+router.post("/password/reset", generateResetToken);
+router.get("/password/reset/:userId/:token", verifyResetToken);
+router.post("/password/update", updatePassword);
 
 module.exports = router;

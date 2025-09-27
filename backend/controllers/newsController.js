@@ -1,4 +1,4 @@
-const NewsArticle = require('../dbSchema/newsSchema');
+const NewsArticle = require("../dbSchema/newsSchema");
 
 const getLatestNews = async (req, res) => {
   try {
@@ -18,7 +18,7 @@ const getNewsByTicker = async (req, res) => {
     const { limit = 10 } = req.query;
 
     if (!ticker) {
-      return res.status(400).json({ error: 'Ticker is required' });
+      return res.status(400).json({ error: "Ticker is required" });
     }
 
     const formattedTicker = ticker.toUpperCase();

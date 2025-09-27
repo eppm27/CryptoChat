@@ -8,14 +8,16 @@ const { setCryptoCache } = require("../cache");
 const fetchWithRetry = async (url, retries = 5, delay = 2000, headers = {}) => {
   try {
     console.log(`🌐 Fetching: ${url}`);
-    const response = await axios.get(url, { 
+    const response = await axios.get(url, {
       headers,
-      timeout: 15000 // 15 second timeout
+      timeout: 15000, // 15 second timeout
     });
     return response;
   } catch (error) {
     if (error.response && error.response.status === 429 && retries > 0) {
-      console.log(`⏳ Rate limited, waiting ${delay}ms before retry (${retries} retries left)`);
+      console.log(
+        `⏳ Rate limited, waiting ${delay}ms before retry (${retries} retries left)`
+      );
       await new Promise((resolve) => setTimeout(resolve, delay));
       return fetchWithRetry(url, retries - 1, delay * 2, headers);
     } else {

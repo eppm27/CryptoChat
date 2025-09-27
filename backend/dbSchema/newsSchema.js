@@ -1,6 +1,6 @@
 // Define schema for News articles
-const mongoose = require('mongoose');
-const { financialDataDB } = require('../config/db');
+const mongoose = require("mongoose");
+const { financialDataDB } = require("../config/db");
 
 const newsSchema = new mongoose.Schema({
   title: {
@@ -30,7 +30,7 @@ const newsSchema = new mongoose.Schema({
     },
   },
   topics: {
-    type: [String], 
+    type: [String],
     default: [],
   },
   tickers: {
@@ -53,10 +53,10 @@ newsSchema.index({ published_at: -1 }); // For sorting by newest first
 newsSchema.index({ tickers: 1 }); // For ticker-based queries
 newsSchema.index({ url: 1 }, { unique: true }); // Prevent duplicate articles
 newsSchema.index({ source: 1, published_at: -1 }); // For source-based queries with sorting
-newsSchema.index({ 'metadata.lastFetched': 1 }); // For update operations
+newsSchema.index({ "metadata.lastFetched": 1 }); // For update operations
 
 module.exports = financialDataDB.model(
-  'DataNewsArticle',
+  "DataNewsArticle",
   newsSchema,
-  'newsData'
+  "newsData"
 );

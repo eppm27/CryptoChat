@@ -1,11 +1,11 @@
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import { User } from '../dbSchema/userSchema';
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import { User } from "../dbSchema/userSchema";
 import {
   transporter,
   getPasswordResetURL,
   resetPasswordTemplate,
-} from '../services/emailService';
+} from "../services/emailService";
 
 // `secret` is passwordHash concatenated with user's createdAt,
 // if someones gets a user token they still need a timestamp to intercept
@@ -14,7 +14,7 @@ export const usePasswordHashToMakeToken = ({
   _id: userId,
   createdAt,
 }) => {
-  const secret = passwordHash + '-' + createdAt;
+  const secret = passwordHash + "-" + createdAt;
   const token = jwt.sign({ userId }, secret, {
     expiresIn: 3600, // 1 hour
   });
@@ -27,7 +27,7 @@ export const sendPasswordResetEmail = async (req, res) => {
   try {
     user = await User.findOne({ email }).exec();
   } catch (err) {
-    res.status(404).json(err + 'No user with that email');
+    res.status(404).json(err + "No user with that email");
   }
   const token = usePasswordHashToMakeToken(user);
   const url = getPasswordResetURL(user, token);
@@ -36,7 +36,7 @@ export const sendPasswordResetEmail = async (req, res) => {
   const sendEmail = () => {
     transporter.sendMail(emailTemplate, (err, info) => {
       if (err) {
-        res.status(500).json('Error sending email in email controller');
+        res.status(500).json("Error sending email in email controller");
       }
       console.log(`** Email sent **`, info.response);
     });
@@ -51,7 +51,7 @@ export const receiveNewPassword = (req, res) => {
   User.findOne({ _id: userId })
 
     .then((user) => {
-      const secret = user.password + '-' + user.createdAt;
+      const secret = user.password + "-" + user.createdAt;
       const payload = jwt.decode(token, secret);
       if (payload.userId === user._id) {
         bcrypt.genSalt(10, function (err, salt) {
@@ -59,7 +59,7 @@ export const receiveNewPassword = (req, res) => {
           bcrypt.hash(password, salt, function (err, hash) {
             if (err) return;
             User.findOneAndUpdate({ _id: userId }, { password: hash })
-              .then(() => res.status(202).json('Password changed accepted'))
+              .then(() => res.status(202).json("Password changed accepted"))
               .catch((err) => res.status(500).json(err));
           });
         });
@@ -67,6 +67,6 @@ export const receiveNewPassword = (req, res) => {
     })
 
     .catch(() => {
-      res.status(404).json('Invalid user');
+      res.status(404).json("Invalid user");
     });
 };

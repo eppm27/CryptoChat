@@ -41,7 +41,7 @@ const ForgotPasswordPage = () => {
           type="email"
           value={email}
           onChange={(e) => {
-            setEmail(e.target.value)
+            setEmail(e.target.value);
             setMessage(""); // clear message on change
             setErrorExist(false); // clear error on change
           }}

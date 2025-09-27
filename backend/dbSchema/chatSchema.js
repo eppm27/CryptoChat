@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const { userDB } = require('../config/db');
+const mongoose = require("mongoose");
+const { userDB } = require("../config/db");
 
 /*
     Relationship: User -> has many -> Chats -> has many -> Messages
@@ -9,17 +9,17 @@ const chatDB = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
       index: true, // for querying
     },
     title: {
       type: String,
-      default: 'New Chat',
+      default: "New Chat",
     },
     lastMessage: {
       type: String,
-      default: '',
+      default: "",
     },
     createdAt: {
       type: Date,
@@ -32,13 +32,13 @@ const chatDB = new mongoose.Schema(
 const messageDB = new mongoose.Schema({
   chat: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Chat',
+    ref: "Chat",
     required: true,
     index: true,
   },
   role: {
     type: String,
-    enum: ['user', 'chatBot'],
+    enum: ["user", "chatBot"],
     required: true,
   },
   content: {
@@ -64,6 +64,6 @@ const messageDB = new mongoose.Schema({
 messageDB.index({ chat: 1, createdAt: 1 });
 
 module.exports = {
-  Chat: userDB.model('Chat', chatDB),
-  Message: userDB.model('Message', messageDB),
+  Chat: userDB.model("Chat", chatDB),
+  Message: userDB.model("Message", messageDB),
 };

@@ -48,7 +48,7 @@ const getAllCryptoList = async (req, res) => {
 const getCryptoDetailsDatabase = async (req, res) => {
   try {
     let { cryptos = [], type = "default" } = req.query;
-    
+
     // Handle different ways axios might serialize the array
     if (typeof cryptos === "string") {
       try {
@@ -62,7 +62,7 @@ const getCryptoDetailsDatabase = async (req, res) => {
           .filter((item) => item.length > 0);
       }
     }
-    
+
     const now = Date.now();
 
     const cache = getCryptoCache();

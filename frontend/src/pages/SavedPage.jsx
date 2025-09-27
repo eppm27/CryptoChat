@@ -94,7 +94,11 @@ const SavedPage = () => {
                     personal library of useful conversations and queries.
                   </p>
                 </div>
-                <Button onClick={addClicked} size="lg" className="mt-4 lg:mt-6 w-full sm:w-auto">
+                <Button
+                  onClick={addClicked}
+                  size="lg"
+                  className="mt-4 lg:mt-6 w-full sm:w-auto"
+                >
                   Save Your First Prompt
                 </Button>
               </div>

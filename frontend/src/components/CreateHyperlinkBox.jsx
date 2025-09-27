@@ -114,5 +114,4 @@ const createHyperlinkBox = (inputLinks, type) => {
 
 export default createHyperlinkBox;
 
-
 // disclosure created with https://headlessui.com/react/disclosure

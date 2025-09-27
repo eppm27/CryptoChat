@@ -5,9 +5,9 @@ const GraphColour = (sparkline) => {
   const endPrice = sparkline[sparkline.length - 1].price;
 
   if (endPrice > startPrice) {
-    return "green"; // positive trend - price increased 
+    return "green"; // positive trend - price increased
   } else if (endPrice < startPrice) {
-    return "red"; // negative trend - price decreased 
+    return "red"; // negative trend - price decreased
   } else {
     return "gray"; // neutral - no change
   }

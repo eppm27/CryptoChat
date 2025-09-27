@@ -30,7 +30,7 @@ const COLORS = [
 
 const ChatChart = React.memo(({ visualization }) => {
   console.log("📊 ChatChart received visualization:", visualization);
-  
+
   if (!visualization || !visualization.dataPoints?.length) {
     console.log("❌ ChatChart: No visualization or dataPoints");
     return null;
@@ -86,14 +86,20 @@ const ChatChart = React.memo(({ visualization }) => {
         fullTime: new Date(point.time),
       }))
       .sort((a, b) => a.fullTime - b.fullTime);
-    
+
     // Sample data if there are too many points to improve performance
     if (processedData.length > 100) {
       const step = Math.ceil(processedData.length / 100);
       processedData = processedData.filter((_, index) => index % step === 0);
-      console.log("📊 Sampled data from", dataPoints.length, "to", processedData.length, "points");
+      console.log(
+        "📊 Sampled data from",
+        dataPoints.length,
+        "to",
+        processedData.length,
+        "points"
+      );
     }
-    
+
     return processedData;
   };
 

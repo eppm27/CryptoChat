@@ -24,7 +24,10 @@ const DashboardPage = () => {
         console.error("Error fetching user data:", err);
         setError(err.message);
         // If authentication fails, redirect to login
-        if (err.message.includes('Failed to fetch user data') || err.message.includes('Unauthorized')) {
+        if (
+          err.message.includes("Failed to fetch user data") ||
+          err.message.includes("Unauthorized")
+        ) {
           navigate("/");
           return;
         }
@@ -170,9 +173,7 @@ const DashboardPage = () => {
               Something went wrong
             </h2>
             <p className="text-neutral-600 mb-6">{error}</p>
-            <Button onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
+            <Button onClick={() => window.location.reload()}>Try Again</Button>
           </Card>
         </div>
       </div>

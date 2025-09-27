@@ -86,106 +86,107 @@ const MicIcon = () => (
 // MessageBubble component - moved outside to prevent recreation
 const MessageBubble = React.memo(
   ({ message, onSavePrompt, isStreaming, isThinking }) => {
-  const isUser = message.role === "user";
-  const isBot = message.role === "chatBot";
+    const isUser = message.role === "user";
+    const isBot = message.role === "chatBot";
 
-  // Memoize the visualization prop to prevent unnecessary re-renders
-  const visualizationData = useMemo(() => {
-    if (!message.visualization) return null;
-    return Array.isArray(message.visualization)
-      ? message.visualization[0]
-      : message.visualization;
-  }, [message.visualization]);
+    // Memoize the visualization prop to prevent unnecessary re-renders
+    const visualizationData = useMemo(() => {
+      if (!message.visualization) return null;
+      return Array.isArray(message.visualization)
+        ? message.visualization[0]
+        : message.visualization;
+    }, [message.visualization]);
 
-  return (
-    <div
-      className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
-    >
+    return (
       <div
-        className={cn(
-          "max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 md:px-5 md:py-4 break-words transition-all duration-200",
-          isUser
-            ? "bg-primary-600 hover:bg-primary-700 text-white ml-2 md:ml-4 shadow-lg"
-            : "bg-white border border-neutral-200 mr-2 md:mr-4 shadow-md hover:shadow-lg"
-        )}
+        className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
       >
-        {isBot && !message.isError && (
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
-                <SparklesIcon />
+        <div
+          className={cn(
+            "max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 md:px-5 md:py-4 break-words transition-all duration-200",
+            isUser
+              ? "bg-primary-600 hover:bg-primary-700 text-white ml-2 md:ml-4 shadow-lg"
+              : "bg-white border border-neutral-200 mr-2 md:mr-4 shadow-md hover:shadow-lg"
+          )}
+        >
+          {isBot && !message.isError && (
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
+                  <SparklesIcon />
+                </div>
+                <span className="text-sm font-medium text-neutral-600">
+                  CryptoGPT
+                </span>
               </div>
-              <span className="text-sm font-medium text-neutral-600">
-                CryptoGPT
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onSavePrompt(message.content)}
+                className="h-6 w-6 p-0"
+              >
+                <BookmarkIcon />
+              </Button>
+            </div>
+          )}
+
+          <div
+            className={cn(
+              "prose prose-sm max-w-none",
+              isUser ? "prose-invert" : "",
+              message.isError ? "text-danger-600" : ""
+            )}
+          >
+            {message.content ? (
+              <ReactMarkdown>{message.content}</ReactMarkdown>
+            ) : isBot && isThinking ? (
+              <div className="flex items-center space-x-2 text-sm text-neutral-500">
+                <div className="flex space-x-1">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="w-2.5 h-2.5 bg-primary-500 rounded-full animate-bounce"
+                      style={{
+                        animationDelay: `${i * 0.15}s`,
+                        animationDuration: "1s",
+                      }}
+                    />
+                  ))}
+                </div>
+                <span>Thinking...</span>
+              </div>
+            ) : null}
+            {isStreaming && isBot && (
+              <span className="inline-flex items-center ml-1">
+                <div className="w-1 h-4 bg-primary-500 animate-pulse" />
               </span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onSavePrompt(message.content)}
-              className="h-6 w-6 p-0"
-            >
-              <BookmarkIcon />
-            </Button>
+            )}
           </div>
-        )}
 
-        <div
-          className={cn(
-            "prose prose-sm max-w-none",
-            isUser ? "prose-invert" : "",
-            message.isError ? "text-danger-600" : ""
-          )}
-        >
-          {message.content ? (
-            <ReactMarkdown>{message.content}</ReactMarkdown>
-          ) : isBot && isThinking ? (
-            <div className="flex items-center space-x-2 text-sm text-neutral-500">
-              <div className="flex space-x-1">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="w-2.5 h-2.5 bg-primary-500 rounded-full animate-bounce"
-                    style={{
-                      animationDelay: `${i * 0.15}s`,
-                      animationDuration: "1s",
-                    }}
-                  />
-                ))}
-              </div>
-              <span>Thinking...</span>
+          {message.visualization && (
+            <div className="mt-4 rounded-xl overflow-hidden">
+              <ChatChart visualization={visualizationData} />
             </div>
-          ) : null}
-          {isStreaming && isBot && (
-            <span className="inline-flex items-center ml-1">
-              <div className="w-1 h-4 bg-primary-500 animate-pulse" />
-            </span>
           )}
-        </div>
 
-        {message.visualization && (
-          <div className="mt-4 rounded-xl overflow-hidden">
-            <ChatChart visualization={visualizationData} />
+          <div
+            className={cn(
+              "text-xs mt-2 opacity-70",
+              isUser ? "text-right text-primary-100" : "text-neutral-500"
+            )}
+          >
+            {new Date(
+              message.timestamp || message.createdAt || new Date()
+            ).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </div>
-        )}
-
-        <div
-          className={cn(
-            "text-xs mt-2 opacity-70",
-            isUser ? "text-right text-primary-100" : "text-neutral-500"
-          )}
-        >
-          {new Date(
-            message.timestamp || message.createdAt || new Date()
-          ).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 MessageBubble.displayName = "MessageBubble";
 
@@ -200,7 +201,12 @@ const ChatPage = () => {
 
   // Debug state changes
   useEffect(() => {
-    console.log("🔄 State change - isLoading:", isLoading, "isStreaming:", isStreaming);
+    console.log(
+      "🔄 State change - isLoading:",
+      isLoading,
+      "isStreaming:",
+      isStreaming
+    );
   }, [isLoading, isStreaming]);
   const [, setError] = useState(null);
   const [showPrompts, setShowPrompts] = useState(false);

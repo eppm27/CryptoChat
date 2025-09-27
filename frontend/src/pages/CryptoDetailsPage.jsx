@@ -17,7 +17,6 @@ import {
 } from "../services/userAPI.jsx";
 import RSIGraph from "../components/CryptoIndicatorGraph.jsx";
 
-
 const InfoRow = ({ label, value }) => (
   <>
     <Box
@@ -107,10 +106,10 @@ const CoinDescription = ({ description }) => {
           </span>
         ))}
       </div>
-      
+
       {/* divider and expand button */}
       {splitLines.length > 2 && (
-         <div className="border-t-2 border-gray-300 pt-2 flex">
+        <div className="border-t-2 border-gray-300 pt-2 flex">
           <button
             onClick={() => setExpand(!expand)}
             className="ml-auto bg-gray-200 hover:bg-gray-300 text-gray-800 text-md font-medium py-1 px-3 rounded-md shadow-sm transition"
@@ -120,7 +119,7 @@ const CoinDescription = ({ description }) => {
         </div>
       )}
     </div>
-  )
+  );
 };
 
 const CryptoDetailsPage = () => {

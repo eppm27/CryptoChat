@@ -1,14 +1,14 @@
-const mongoose = require('mongoose');
-const { cryptoListDB } = require('../config/db');
+const mongoose = require("mongoose");
+const { cryptoListDB } = require("../config/db");
 
 const cryptoIndicatorDB = new mongoose.Schema(
   {
     // Reference to the main crypto document (one-to-one relationship)
     cryptoId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Crypto',
+      ref: "Crypto",
       required: true,
-      unique: true, 
+      unique: true,
     },
     symbol: {
       type: String,
@@ -19,8 +19,8 @@ const cryptoIndicatorDB = new mongoose.Schema(
     interval: {
       type: String,
       required: true,
-      enum: ['daily', 'weekly', 'monthly'],
-      default: 'daily',
+      enum: ["daily", "weekly", "monthly"],
+      default: "daily",
     },
     time_period: {
       type: Number,
@@ -30,15 +30,15 @@ const cryptoIndicatorDB = new mongoose.Schema(
     series_type: {
       type: String,
       required: true,
-      enum: ['open', 'high', 'low', 'close'],
-      default: 'close',
+      enum: ["open", "high", "low", "close"],
+      default: "close",
     },
 
     indicator: {
       type: String,
       required: true,
-      enum: ['RSI', 'MACD', 'SMA'],
-      default: 'RSI',
+      enum: ["RSI", "MACD", "SMA"],
+      default: "RSI",
     },
 
     data: [
@@ -68,7 +68,7 @@ cryptoIndicatorDB.index({
 });
 
 module.exports = cryptoListDB.model(
-  'CryptoIndicator',
+  "CryptoIndicator",
   cryptoIndicatorDB,
-  'cryptoIndicator'
+  "cryptoIndicator"
 );

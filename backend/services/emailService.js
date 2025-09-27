@@ -1,8 +1,8 @@
-const nodemailer = require('nodemailer');
-require('dotenv').config({ path: '../.env' });
+const nodemailer = require("nodemailer");
+require("dotenv").config({ path: "../.env" });
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: "gmail",
   auth: {
     user: process.env.EMAIL_LOGIN,
     pass: process.env.EMAIL_PASSWORD,
@@ -15,7 +15,7 @@ const getPasswordResetURL = (user, token) =>
 const resetPasswordTemplate = (user, url) => {
   const from = process.env.EMAIL_LOGIN;
   const to = user.email;
-  const subject = 'CryptoChat Password Reset';
+  const subject = "CryptoChat Password Reset";
   const html = `
   <p>Hi ${user.firstName || user.email},</p>
   <p>You can use the following link to reset your password:</p>

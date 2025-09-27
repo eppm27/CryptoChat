@@ -12,13 +12,28 @@ import { useNavigate } from "react-router-dom";
 import savedPromptColumn from "../placeholderData/savedPromptColumn.json";
 import walletColumns from "../placeholderData/walletList.json";
 import DeleteModal from "./DeleteModal.jsx";
-import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, Area, AreaChart } from "recharts";
+import {
+  LineChart,
+  Line,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Area,
+  AreaChart,
+} from "recharts";
 import { fetchCryptoDetailsDatabase } from "../services/cryptoAPI";
 import { ArrowDropUp, ArrowDropDown, MoreVert } from "@mui/icons-material";
 import { message } from "antd";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import GraphColour from "./GraphColour";
-import { Card, PriceChange, Badge, Button, BottomSheet } from "../components/ui/index";
+import {
+  Card,
+  PriceChange,
+  Badge,
+  Button,
+  BottomSheet,
+} from "../components/ui/index";
 
 const watchlistPageColumns = [
   { label: "Name", dataKey: "name", width: 150 },
@@ -99,7 +114,14 @@ VirtuosoTableComponents.TableHead.displayName = "VirtuosoTableHead";
 VirtuosoTableComponents.TableBody.displayName = "VirtuosoTableBody";
 
 // Mobile Card Component for responsive design
-const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, onRowClick }) => {
+const MobileCard = ({
+  row,
+  inputTableType,
+  navigate,
+  setDeleteModal,
+  userData,
+  onRowClick,
+}) => {
   const [showActions, setShowActions] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = React.useRef(null);
@@ -112,9 +134,9 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -125,7 +147,10 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
       if (cryptoId) {
         navigate(`/cryptoDetails/${cryptoId}`);
       }
-    } else if (inputTableType === "savedPrompt" || inputTableType === "savedPage") {
+    } else if (
+      inputTableType === "savedPrompt" ||
+      inputTableType === "savedPage"
+    ) {
       // For saved prompts, create a chat
       handleChatCreation();
     }
@@ -187,7 +212,9 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
             ${payload[0].value?.toFixed(4)}
           </p>
           <p className="text-xs text-gray-600">
-            {label && !isNaN(label) ? new Date(Number(label)).toLocaleDateString() : ''}
+            {label && !isNaN(label)
+              ? new Date(Number(label)).toLocaleDateString()
+              : ""}
           </p>
         </div>
       );
@@ -196,28 +223,28 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
   };
 
   return (
-    <Card 
+    <Card
       className="p-4 cursor-pointer hover:shadow-lg transition-all duration-200 bg-white/90 backdrop-blur-sm border border-gray-200"
       onClick={handleCardClick}
     >
       {/* Header Row */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className="font-bold text-lg text-gray-900">
-            {row.name}
-          </div>
-          {(inputTableType === "watchlistPage" || inputTableType === "watchlist") &&
+          <div className="font-bold text-lg text-gray-900">{row.name}</div>
+          {(inputTableType === "watchlistPage" ||
+            inputTableType === "watchlist") &&
             userData?.wallet?.some(
-              (walletItem) => walletItem.cryptoId === row.userWatchlistInfo?.cryptoId
+              (walletItem) =>
+                walletItem.cryptoId === row.userWatchlistInfo?.cryptoId
             ) && (
               <Badge variant="secondary" className="text-xs">
                 <Wallet className="w-3 h-3 mr-1" />
               </Badge>
-          )}
+            )}
         </div>
         <div className="relative" ref={dropdownRef}>
-          <MoreVert 
-            className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors" 
+          <MoreVert
+            className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               // Show mobile bottom sheet on small screens, dropdown on large screens
@@ -228,7 +255,7 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
               }
             }}
           />
-          
+
           {/* Desktop Dropdown */}
           {showDropdown && (
             <div className="absolute right-0 top-8 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-2">
@@ -246,7 +273,8 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
               </button>
 
               {/* Start Chat (for watchlist items) */}
-              {(inputTableType === "watchlistPage" || inputTableType === "watchlist") && (
+              {(inputTableType === "watchlistPage" ||
+                inputTableType === "watchlist") && (
                 <button
                   className="w-full px-4 py-2 text-left hover:bg-blue-50 text-blue-600 flex items-center"
                   onClick={(e) => {
@@ -261,7 +289,8 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
               )}
 
               {/* Edit/Manage */}
-              {(inputTableType === "watchlistPage" || inputTableType === "savedPage") && (
+              {(inputTableType === "watchlistPage" ||
+                inputTableType === "savedPage") && (
                 <button
                   className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center"
                   onClick={(e) => {
@@ -280,23 +309,29 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
               )}
 
               {/* Add to Wallet */}
-              {(inputTableType === "watchlistPage" || inputTableType === "watchlist") && 
-               !userData?.wallet?.some(walletItem => walletItem.cryptoId === row.userWatchlistInfo?.cryptoId) && (
-                <button
-                  className="w-full px-4 py-2 text-left hover:bg-green-50 text-green-600 flex items-center"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDropdown(false);
-                    message.success(`${row.name} added to wallet!`);
-                  }}
-                >
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Add to Wallet
-                </button>
-              )}
+              {(inputTableType === "watchlistPage" ||
+                inputTableType === "watchlist") &&
+                !userData?.wallet?.some(
+                  (walletItem) =>
+                    walletItem.cryptoId === row.userWatchlistInfo?.cryptoId
+                ) && (
+                  <button
+                    className="w-full px-4 py-2 text-left hover:bg-green-50 text-green-600 flex items-center"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDropdown(false);
+                      message.success(`${row.name} added to wallet!`);
+                    }}
+                  >
+                    <Wallet className="w-4 h-4 mr-2" />
+                    Add to Wallet
+                  </button>
+                )}
 
               {/* Remove/Delete */}
-              {(inputTableType === "watchlistPage" || inputTableType === "savedPage" || inputTableType === "walletPage") && (
+              {(inputTableType === "watchlistPage" ||
+                inputTableType === "savedPage" ||
+                inputTableType === "walletPage") && (
                 <>
                   <hr className="my-1" />
                   <button
@@ -319,9 +354,7 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
 
       {/* Price and Change Row */}
       <div className="flex items-center justify-between mb-4">
-        <div className="text-2xl font-bold text-gray-900">
-          {row.price}
-        </div>
+        <div className="text-2xl font-bold text-gray-900">{row.price}</div>
         <div className="flex flex-col items-end gap-1">
           {row.change24h && (
             <PriceChange
@@ -350,22 +383,28 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
             {row.marketCap || row.prompt || row.content}
           </div>
         </div>
-        
+
         {/* Enhanced 7-Day Graph */}
         {row.graphInfo && (
           <div className="w-24 h-16 ml-4">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={row.graphInfo}>
                 <defs>
-                  <linearGradient id={`gradient-${row.name}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop 
-                      offset="5%" 
-                      stopColor={GraphColour(row.graphInfo)} 
+                  <linearGradient
+                    id={`gradient-${row.name}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="5%"
+                      stopColor={GraphColour(row.graphInfo)}
                       stopOpacity={0.3}
                     />
-                    <stop 
-                      offset="95%" 
-                      stopColor={GraphColour(row.graphInfo)} 
+                    <stop
+                      offset="95%"
+                      stopColor={GraphColour(row.graphInfo)}
                       stopOpacity={0.05}
                     />
                   </linearGradient>
@@ -390,8 +429,8 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
       {(inputTableType === "savedPrompt" || inputTableType === "savedPage") && (
         <div className="mt-3 pt-3 border-t border-gray-100">
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>{row.dateCreated || 'Recent'}</span>
-            <span>{row.category || 'General'}</span>
+            <span>{row.dateCreated || "Recent"}</span>
+            <span>{row.category || "General"}</span>
           </div>
         </div>
       )}
@@ -400,7 +439,7 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
       <BottomSheet
         isOpen={showActions}
         onClose={() => setShowActions(false)}
-        title={`${row.name || 'Item'} Actions`}
+        title={`${row.name || "Item"} Actions`}
       >
         <div className="space-y-3">
           {/* View Details */}
@@ -418,7 +457,8 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
           </Button>
 
           {/* Start Chat (for watchlist items) */}
-          {(inputTableType === "watchlistPage" || inputTableType === "watchlist") && (
+          {(inputTableType === "watchlistPage" ||
+            inputTableType === "watchlist") && (
             <Button
               variant="outline"
               className="w-full justify-start text-blue-600 hover:text-blue-700 hover:bg-blue-50"
@@ -434,7 +474,8 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
           )}
 
           {/* Edit/Manage (for watchlist and saved items) */}
-          {(inputTableType === "watchlistPage" || inputTableType === "savedPage") && (
+          {(inputTableType === "watchlistPage" ||
+            inputTableType === "savedPage") && (
             <Button
               variant="outline"
               className="w-full justify-start"
@@ -454,7 +495,9 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
           )}
 
           {/* Remove/Delete */}
-          {(inputTableType === "watchlistPage" || inputTableType === "savedPage" || inputTableType === "walletPage") && (
+          {(inputTableType === "watchlistPage" ||
+            inputTableType === "savedPage" ||
+            inputTableType === "walletPage") && (
             <Button
               variant="outline"
               className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -470,22 +513,26 @@ const MobileCard = ({ row, inputTableType, navigate, setDeleteModal, userData, o
           )}
 
           {/* Add to Wallet (for watchlist items) */}
-          {(inputTableType === "watchlistPage" || inputTableType === "watchlist") && 
-           !userData?.wallet?.some(walletItem => walletItem.cryptoId === row.userWatchlistInfo?.cryptoId) && (
-            <Button
-              variant="outline"
-              className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowActions(false);
-                // Add to wallet functionality would go here
-                message.success(`${row.name} added to wallet!`);
-              }}
-            >
-              <Wallet className="w-4 h-4 mr-2" />
-              Add to Wallet
-            </Button>
-          )}
+          {(inputTableType === "watchlistPage" ||
+            inputTableType === "watchlist") &&
+            !userData?.wallet?.some(
+              (walletItem) =>
+                walletItem.cryptoId === row.userWatchlistInfo?.cryptoId
+            ) && (
+              <Button
+                variant="outline"
+                className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowActions(false);
+                  // Add to wallet functionality would go here
+                  message.success(`${row.name} added to wallet!`);
+                }}
+              >
+                <Wallet className="w-4 h-4 mr-2" />
+                Add to Wallet
+              </Button>
+            )}
 
           {/* Cancel */}
           <Button
@@ -545,7 +592,8 @@ function fixedHeaderContent(inputTableType) {
               index === 0
                 ? 0
                 : "auto",
-            borderRight: index > 0 ? "1px solid rgba(59, 130, 246, 0.1)" : "none",
+            borderRight:
+              index > 0 ? "1px solid rgba(59, 130, 246, 0.1)" : "none",
             boxShadow:
               (inputTableType === "watchlistPage" ||
                 inputTableType === "watchlist") &&
@@ -690,21 +738,27 @@ function rowContent(
               <ResponsiveContainer width="100%" height={60}>
                 <AreaChart data={row[column.dataKey]}>
                   <defs>
-                    <linearGradient id={`tableGradient-${index}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop 
-                        offset="5%" 
-                        stopColor={GraphColour(row[column.dataKey])} 
+                    <linearGradient
+                      id={`tableGradient-${index}`}
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor={GraphColour(row[column.dataKey])}
                         stopOpacity={0.4}
                       />
-                      <stop 
-                        offset="95%" 
-                        stopColor={GraphColour(row[column.dataKey])} 
+                      <stop
+                        offset="95%"
+                        stopColor={GraphColour(row[column.dataKey])}
                         stopOpacity={0.1}
                       />
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="time" hide />
-                  <Tooltip 
+                  <Tooltip
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         return (
@@ -713,7 +767,9 @@ function rowContent(
                               ${payload[0].value?.toFixed(4)}
                             </p>
                             <p className="text-xs text-gray-600">
-                              {label && !isNaN(label) ? new Date(Number(label)).toLocaleDateString() : '7-day trend'}
+                              {label && !isNaN(label)
+                                ? new Date(Number(label)).toLocaleDateString()
+                                : "7-day trend"}
                             </p>
                           </div>
                         );
@@ -751,13 +807,19 @@ function rowContent(
             column.dataKey === "change24h" ||
             column.dataKey === "change7d" ? (
             <PriceChange
-              value={row[column.dataKey] === "N/A" ? null : parseFloat(row[column.dataKey])}
+              value={
+                row[column.dataKey] === "N/A"
+                  ? null
+                  : parseFloat(row[column.dataKey])
+              }
               showIcon={true}
               className="font-semibold"
             />
           ) : column.dataKey === "name" ? (
             <div className="flex items-center gap-3">
-              <div className="font-semibold text-gray-900">{row[column.dataKey]}</div>
+              <div className="font-semibold text-gray-900">
+                {row[column.dataKey]}
+              </div>
               {(inputTableType === "watchlistPage" ||
                 inputTableType === "watchlist") &&
                 userData?.wallet?.some(
@@ -778,9 +840,7 @@ function rowContent(
               {row[column.dataKey]}
             </div>
           ) : (
-            <div className="text-gray-600">
-              {row[column.dataKey]}
-            </div>
+            <div className="text-gray-600">{row[column.dataKey]}</div>
           )}
         </TableCell>
       ))}
@@ -788,7 +848,12 @@ function rowContent(
   );
 }
 
-export default function CreateTable({ inputTableType, userData, onSuccess, onRowClick }) {
+export default function CreateTable({
+  inputTableType,
+  userData,
+  onSuccess,
+  onRowClick,
+}) {
   const [deleteModal, setDeleteModal] = useState({
     showModal: false,
     rowData: null,
@@ -802,7 +867,7 @@ export default function CreateTable({ inputTableType, userData, onSuccess, onRow
       setSelectedData(null);
       return;
     }
-    
+
     if (inputTableType === "watchlistPage" || inputTableType === "watchlist") {
       setSelectedData(userData.watchlist || []);
     } else if (
@@ -838,7 +903,7 @@ export default function CreateTable({ inputTableType, userData, onSuccess, onRow
               // Sparkline typically has 168 data points (7 days * 24 hours)
               const now = new Date();
               const hoursBack = sparkData.length - 1 - index;
-              const date = new Date(now.getTime() - (hoursBack * 60 * 60 * 1000));
+              const date = new Date(now.getTime() - hoursBack * 60 * 60 * 1000);
               return {
                 time: date.getTime(), // Use timestamp for proper date handling
                 price: price,

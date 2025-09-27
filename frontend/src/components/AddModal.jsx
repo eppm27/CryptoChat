@@ -25,9 +25,9 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
   const [step, setStep] = useState(1);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const walletEntries = (userData?.wallet) ?? [];
-  const watchlistEntries = (userData?.watchlist) ?? [];
-  const savedPrompts = (userData?.savedPrompts) ?? [];
+  const walletEntries = userData?.wallet ?? [];
+  const watchlistEntries = userData?.watchlist ?? [];
+  const savedPrompts = userData?.savedPrompts ?? [];
 
   const filteredCryptos = useMemo(() => {
     if (!searchQuery) {
@@ -95,7 +95,9 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
 
   const handleSave = async () => {
     if (!userData) {
-      message.error("User data is still loading. Please try again in a moment.");
+      message.error(
+        "User data is still loading. Please try again in a moment."
+      );
       return;
     }
 
@@ -233,7 +235,10 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
   if (showConfirmation && modalType === "wallet") {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 px-4">
-        <div className="bg-white w-full max-w-lg rounded-3xl p-8 shadow-2xl text-center" data-testid="add-modal-success">
+        <div
+          className="bg-white w-full max-w-lg rounded-3xl p-8 shadow-2xl text-center"
+          data-testid="add-modal-success"
+        >
           <div className="w-20 h-20 bg-success-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg
               className="w-10 h-10 text-success-600"
@@ -253,12 +258,13 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
             Successfully Added!
           </h3>
           <p className="text-neutral-600 mb-4">
-            {cryptoAmount} {selectedCrypto?.symbol?.toUpperCase()} has been added to your wallet
+            {cryptoAmount} {selectedCrypto?.symbol?.toUpperCase()} has been
+            added to your wallet
           </p>
           {portfolioImpact && (
             <div className="bg-primary-50 rounded-xl p-4">
               <p className="text-sm text-primary-700">
-                Investment Value: {" "}
+                Investment Value:{" "}
                 <span className="font-semibold">
                   ${portfolioImpact.investmentAmount.toFixed(2)}
                 </span>
@@ -459,11 +465,14 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
                                 <div className="text-right">
                                   <p className="text-sm font-semibold text-neutral-900">
                                     $
-                                    {crypto.current_price.toLocaleString(undefined, {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits:
-                                        crypto.current_price < 1 ? 6 : 2,
-                                    })}
+                                    {crypto.current_price.toLocaleString(
+                                      undefined,
+                                      {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits:
+                                          crypto.current_price < 1 ? 6 : 2,
+                                      }
+                                    )}
                                   </p>
                                 </div>
                               )}
@@ -539,11 +548,14 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
                               <div className="text-right">
                                 <p className="text-sm font-semibold text-neutral-900">
                                   $
-                                  {crypto.current_price.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits:
-                                      crypto.current_price < 1 ? 6 : 2,
-                                  })}
+                                  {crypto.current_price.toLocaleString(
+                                    undefined,
+                                    {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits:
+                                        crypto.current_price < 1 ? 6 : 2,
+                                    }
+                                  )}
                                 </p>
                                 {typeof crypto.price_change_percentage_24h ===
                                   "number" && (
@@ -557,8 +569,12 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
                                         : "text-neutral-500"
                                     )}
                                   >
-                                    {crypto.price_change_percentage_24h > 0 && "+"}
-                                    {crypto.price_change_percentage_24h.toFixed(2)}%
+                                    {crypto.price_change_percentage_24h > 0 &&
+                                      "+"}
+                                    {crypto.price_change_percentage_24h.toFixed(
+                                      2
+                                    )}
+                                    %
                                   </p>
                                 )}
                               </div>
@@ -572,7 +588,11 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
                       (errorType === "Crypto already exists in wallet" ||
                         errorType === "Crypto already exists in watchlist") && (
                         <div className="mt-3 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
-                          {selectedCrypto?.name} is already in your {errorType.includes("wallet") ? "wallet" : "watchlist"}.
+                          {selectedCrypto?.name} is already in your{" "}
+                          {errorType.includes("wallet")
+                            ? "wallet"
+                            : "watchlist"}
+                          .
                         </div>
                       )}
                   </div>
@@ -603,14 +623,19 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
                       </div>
                       {selectedCrypto?.current_price && (
                         <div className="text-right">
-                          <p className="text-sm text-neutral-500">Current Price</p>
+                          <p className="text-sm text-neutral-500">
+                            Current Price
+                          </p>
                           <p className="text-lg font-semibold text-neutral-900">
                             $
-                            {selectedCrypto.current_price.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits:
-                                selectedCrypto.current_price < 1 ? 6 : 2,
-                            })}
+                            {selectedCrypto.current_price.toLocaleString(
+                              undefined,
+                              {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits:
+                                  selectedCrypto.current_price < 1 ? 6 : 2,
+                              }
+                            )}
                           </p>
                         </div>
                       )}
@@ -656,11 +681,12 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
                     </div>
                   </div>
 
-                  {errorExist && errorType === "Crypto already exists in wallet" && (
-                    <div className="p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
-                      This cryptocurrency is already in your wallet.
-                    </div>
-                  )}
+                  {errorExist &&
+                    errorType === "Crypto already exists in wallet" && (
+                      <div className="p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
+                        This cryptocurrency is already in your wallet.
+                      </div>
+                    )}
 
                   {portfolioImpact && (
                     <Card className="p-5 bg-neutral-50">
@@ -682,19 +708,25 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
                       </h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <p className="text-sm text-neutral-600">Total Investment</p>
+                          <p className="text-sm text-neutral-600">
+                            Total Investment
+                          </p>
                           <p className="text-lg font-semibold text-neutral-900">
                             ${portfolioImpact.investmentAmount.toFixed(2)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-neutral-600">Current Value</p>
+                          <p className="text-sm text-neutral-600">
+                            Current Value
+                          </p>
                           <p className="text-lg font-semibold text-neutral-900">
                             ${portfolioImpact.currentValue.toFixed(2)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-neutral-600">Unrealized P&L</p>
+                          <p className="text-sm text-neutral-600">
+                            Unrealized P&L
+                          </p>
                           <p
                             className={cn(
                               "text-lg font-semibold",
@@ -748,7 +780,8 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
                     setSavePrompt(event.target.value);
                     const exists = savedPrompts.some(
                       (entry) =>
-                        entry?.prompt?.toLowerCase() === event.target.value.toLowerCase()
+                        entry?.prompt?.toLowerCase() ===
+                        event.target.value.toLowerCase()
                     );
                     if (!exists) {
                       resetErrors();
@@ -757,11 +790,12 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
                   disabled={loading}
                 />
 
-                {errorExist && errorType === "Prompt already exists in saved" && (
-                  <div className="mt-2 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
-                    This prompt already exists in your saved prompts.
-                  </div>
-                )}
+                {errorExist &&
+                  errorType === "Prompt already exists in saved" && (
+                    <div className="mt-2 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
+                      This prompt already exists in your saved prompts.
+                    </div>
+                  )}
               </div>
             </div>
           )}
@@ -830,5 +864,6 @@ export default AddModal;
 AddModal.propTypes = {
   closeModal: PropTypes.func.isRequired,
   onSuccess: PropTypes.func,
-  modalType: PropTypes.oneOf(["wallet", "watchlist", "savedPrompts"]).isRequired,
+  modalType: PropTypes.oneOf(["wallet", "watchlist", "savedPrompts"])
+    .isRequired,
 };

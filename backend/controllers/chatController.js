@@ -86,15 +86,20 @@ const addMessage = async (req, res) => {
     const streamHandler = (chunk) => {
       if (chunk.content) {
         streamContent += chunk.content;
-        
+
         // Filter out graph-data blocks from streaming content
-        const filteredContent = chunk.content.replace(/```graph-data\n[\s\S]*?\n```/g, '');
-        
+        const filteredContent = chunk.content.replace(
+          /```graph-data\n[\s\S]*?\n```/g,
+          ""
+        );
+
         if (filteredContent.trim()) {
-          res.write(`data: ${JSON.stringify({
-            ...chunk,
-            content: filteredContent
-          })}\n\n`);
+          res.write(
+            `data: ${JSON.stringify({
+              ...chunk,
+              content: filteredContent,
+            })}\n\n`
+          );
         }
       }
     };
@@ -113,10 +118,19 @@ const addMessage = async (req, res) => {
     );
 
     console.log("🔍 Debug processed response:");
-    console.log("- LLM Response visualizations:", llmResponse?.visualizations?.length || 0);
-    console.log("- Processed Response visualizations:", processedResponse?.visualizations?.length || 0);
+    console.log(
+      "- LLM Response visualizations:",
+      llmResponse?.visualizations?.length || 0
+    );
+    console.log(
+      "- Processed Response visualizations:",
+      processedResponse?.visualizations?.length || 0
+    );
     if (processedResponse?.visualizations?.length > 0) {
-      console.log("- First visualization:", JSON.stringify(processedResponse.visualizations[0], null, 2));
+      console.log(
+        "- First visualization:",
+        JSON.stringify(processedResponse.visualizations[0], null, 2)
+      );
     }
 
     // Generate title if this is the first user message

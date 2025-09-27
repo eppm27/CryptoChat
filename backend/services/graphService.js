@@ -273,8 +273,11 @@ const generatePortfolioData = (wallet, cryptoData) => {
 const processGraphsInResponse = async (llmResponse) => {
   console.log("🔍 GraphService: Processing LLM response");
   console.log("- LLM Response type:", typeof llmResponse);
-  console.log("- LLM Response visualizations:", llmResponse?.visualizations?.length || 0);
-  
+  console.log(
+    "- LLM Response visualizations:",
+    llmResponse?.visualizations?.length || 0
+  );
+
   // Support both raw string and { text, visualizations } object
   const rawText =
     typeof llmResponse === "string" ? llmResponse : llmResponse.text || "";

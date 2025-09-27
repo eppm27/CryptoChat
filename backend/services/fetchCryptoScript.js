@@ -1,13 +1,15 @@
 // const axios = require("axios");
 const mongoose = require("mongoose");
 const Crypto = require("../dbSchema/cryptoSchema");
-const { fetchIndividualCryptoDetails,fetchTopCryptos, enrichCryptoFields } = require("../services/frontendCryptoService");
+const {
+  fetchIndividualCryptoDetails,
+  fetchTopCryptos,
+  enrichCryptoFields,
+} = require("../services/frontendCryptoService");
 
-
-// how similar is it for this and the other one 
+// how similar is it for this and the other one
 const fetchAndSaveAllCryptoList = async () => {
   try {
-
     const topCoins = await fetchTopCryptos();
 
     let batch = [];
@@ -15,16 +17,16 @@ const fetchAndSaveAllCryptoList = async () => {
     console.log("finished fetching all markets");
 
     for (const coin of topCoins) {
-      
       console.log(`Fetching details for ${coin.id}, index is ${index}`);
-      await new Promise(resolve => setTimeout(resolve, 15000));    // prevent call exceeding coinGecko limit 
+      await new Promise((resolve) => setTimeout(resolve, 15000)); // prevent call exceeding coinGecko limit
 
       const addedFields = await fetchIndividualCryptoDetails(coin.id);
 
-      if (addedFields) { // only proceed with successful return from coin details
+      if (addedFields) {
+        // only proceed with successful return from coin details
         const coinDetails = enrichCryptoFields(coin, addedFields);
 
-        batch.push(coinDetails); 
+        batch.push(coinDetails);
         index++;
         console.log(`✅ Successfully fetched ${coin.id}`);
 
@@ -41,11 +43,13 @@ const fetchAndSaveAllCryptoList = async () => {
       await Crypto.insertMany(batch);
       console.log(`✅ Remaining coins saved successfully`);
     }
-
   } catch (error) {
-    console.error( 'Error fetching and saving crypto data from coinGecko:', error);
+    console.error(
+      "Error fetching and saving crypto data from coinGecko:",
+      error
+    );
   }
-}
+};
 
 mongoose
   .connect(process.env.MONGODB_URI_CRYPTO)

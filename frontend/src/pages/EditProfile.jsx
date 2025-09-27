@@ -48,7 +48,6 @@ const EditProfile = () => {
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-50 px-4">
       <div className="bg-white shadow-xl rounded-2xl px-8 py-10 w-full max-w-md flex flex-col items-center gap-6 border border-gray-200">
-
         {/* Info Section */}
         <div className="w-full flex flex-col gap-4">
           <div>
@@ -63,7 +62,10 @@ const EditProfile = () => {
                   type="text"
                   value={userData?.firstName || ""}
                   onChange={(e) =>
-                    setUserData((prev) => ({ ...prev, firstName: e.target.value }))
+                    setUserData((prev) => ({
+                      ...prev,
+                      firstName: e.target.value,
+                    }))
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
                 />
@@ -71,7 +73,10 @@ const EditProfile = () => {
                   type="text"
                   value={userData?.lastName || ""}
                   onChange={(e) =>
-                    setUserData((prev) => ({ ...prev, lastName: e.target.value }))
+                    setUserData((prev) => ({
+                      ...prev,
+                      lastName: e.target.value,
+                    }))
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
                 />

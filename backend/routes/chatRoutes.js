@@ -12,6 +12,10 @@ router.get("/", verifyToken, chatController.getAllChats);
 
 // Message routes
 router.post("/:chatId/messages", verifyToken, chatController.addMessage);
-router.get("/:chatId/messages/stream", verifyToken, chatController.streamMessage);
+router.get(
+  "/:chatId/messages/stream",
+  verifyToken,
+  chatController.streamMessage
+);
 
 module.exports = router;

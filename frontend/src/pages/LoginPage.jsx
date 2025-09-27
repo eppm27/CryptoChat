@@ -31,15 +31,35 @@ const LoginPage = () => {
 
   // Email icon
   const EmailIcon = () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+      />
     </svg>
   );
 
   // Lock icon
   const LockIcon = () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+      />
     </svg>
   );
 
@@ -56,8 +76,18 @@ const LoginPage = () => {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
             <div className="w-16 h-16 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-2xl flex items-center justify-center">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <svg
+                className="w-8 h-8 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
               </svg>
             </div>
           </div>
@@ -65,7 +95,8 @@ const LoginPage = () => {
             Welcome Back
           </h1>
           <p className="text-neutral-600 text-lg">
-            Sign in to <span className="font-semibold text-primary-600">CryptoChat</span>
+            Sign in to{" "}
+            <span className="font-semibold text-primary-600">CryptoChat</span>
           </p>
         </div>
 
@@ -104,10 +135,12 @@ const LoginPage = () => {
                   type="checkbox"
                   className="w-4 h-4 text-primary-600 bg-neutral-100 border-neutral-300 rounded focus:ring-primary-500 focus:ring-2"
                 />
-                <span className="ml-2 text-sm text-neutral-600">Remember me</span>
+                <span className="ml-2 text-sm text-neutral-600">
+                  Remember me
+                </span>
               </label>
-              <Link 
-                to="/forgot" 
+              <Link
+                to="/forgot"
                 className="text-sm text-primary-600 hover:text-primary-700 font-medium"
               >
                 Forgot password?
@@ -126,9 +159,9 @@ const LoginPage = () => {
 
           <div className="mt-6 text-center">
             <p className="text-neutral-600">
-              Don't have an account?{' '}
-              <Link 
-                to="/register" 
+              Don't have an account?{" "}
+              <Link
+                to="/register"
                 className="text-primary-600 hover:text-primary-700 font-semibold"
               >
                 Sign up
@@ -140,10 +173,14 @@ const LoginPage = () => {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-neutral-500 text-sm">
-            By signing in, you agree to our{' '}
-            <a href="#" className="text-primary-600 hover:underline">Terms of Service</a>
-            {' '}and{' '}
-            <a href="#" className="text-primary-600 hover:underline">Privacy Policy</a>
+            By signing in, you agree to our{" "}
+            <a href="#" className="text-primary-600 hover:underline">
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a href="#" className="text-primary-600 hover:underline">
+              Privacy Policy
+            </a>
           </p>
         </div>
       </div>

@@ -408,7 +408,7 @@ Respond in JSON format only:
   if (graphMatch) {
     console.log("- Graph data:", graphMatch[1]);
   }
-  
+
   return {
     text: fullText.replace(/```graph-data\n[\s\S]*?\n```/, "").trim(),
     visualizations: graphMatch ? [JSON.parse(graphMatch[1])] : [],
