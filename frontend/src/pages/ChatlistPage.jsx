@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllChats, getChatMessages, createChat } from "../services/userAPI";
+import { getAllChats, getChatMessages } from "../services/userAPI";
 import DeleteChatModal from "../components/DeleteChatModal";
 import { Button, Card, Skeleton, GlassCard } from "../components/ui/index";
 
@@ -28,16 +28,10 @@ const ChatListPage = () => {
   }, [navigate]);
 
   // Handle starting a new chat
-  const handleNewChat = async () => {
-    try {
-      const data = await createChat("");
-      navigate(`/chat/${data.chat._id}`, {
-        state: { isNewChat: true, justCreated: true },
-      });
-    } catch (err) {
-      console.error("Error creating new chat:", err);
-      setError("Failed to create a new chat. Please try again.");
-    }
+  const handleNewChat = () => {
+    navigate("/chat/new", {
+      state: { isNewChat: true },
+    });
   };
 
   // Handle navigating to an existing chat

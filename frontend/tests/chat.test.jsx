@@ -104,7 +104,7 @@ describe("ChatPage", () => {
     render(
       <MemoryRouter
         initialEntries={[
-          { pathname: "/chat", state: { isNewChat: true, justCreated: true } },
+          { pathname: "/chat/new", state: { isNewChat: true } },
         ]}
       >
         <ChatPage />

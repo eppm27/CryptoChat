@@ -18,7 +18,6 @@ const DeleteModal = ({ closeModal, rowData, modalType, onSuccess }) => {
   );
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isChatting, setIsChatting] = useState(false);
 
   const isWatchlist = modalType === "watchlistPage";
   const isWallet = modalType === "walletPage";
@@ -103,7 +102,7 @@ const DeleteModal = ({ closeModal, rowData, modalType, onSuccess }) => {
     }
   };
 
-  const handleChat = async () => {
+  const handleChat = () => {
     let inputPrompt;
 
     if (isWatchlist) {
@@ -115,52 +114,13 @@ const DeleteModal = ({ closeModal, rowData, modalType, onSuccess }) => {
     }
 
     if (!inputPrompt) return;
-
-    try {
-      setIsChatting(true);
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ content: inputPrompt }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create a new chat");
-      }
-
-      const data = await response.json();
-      if (!data.chat?._id) {
-        throw new Error("Unexpected response from chat service");
-      }
-
-      navigate(`/chat/${data.chat._id}`, {
-        state: {
-          initialPrompt: inputPrompt,
-          isNewChat: true,
-          existingMessages: [
-            {
-              text: inputPrompt,
-              sender: "user",
-              isError: false,
-            },
-            {
-              text: data.llmMessage?.content || "No response received.",
-              sender: "chatBot",
-              isError: data.llmMessage?.isError || false,
-            },
-          ],
-        },
-      });
-      closeModal();
-    } catch (error) {
-      console.error("Error starting insights chat:", error);
-      message.error(error.message || "Failed to start AI insights");
-    } finally {
-      setIsChatting(false);
-    }
+    navigate("/chat/new", {
+      state: {
+        initialPrompt: inputPrompt,
+        isNewChat: true,
+      },
+    });
+    closeModal();
   };
 
   return (
@@ -288,10 +248,12 @@ const DeleteModal = ({ closeModal, rowData, modalType, onSuccess }) => {
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col sm:flex-row gap-2">
+            <Button variant="ghost" onClick={closeModal} className="border">
+              Cancel
+            </Button>
             <Button
               variant="outline"
               onClick={handleChat}
-              loading={isChatting}
               className="flex items-center gap-2"
             >
               <Sparkles className="h-4 w-4" /> AI Insights

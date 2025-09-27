@@ -319,23 +319,10 @@ const DashboardPage = () => {
     [walletPreview]
   );
 
-  const handleNewChat = async () => {
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-
-      if (!response.ok) throw new Error("Failed to create a new chat");
-
-      const newChat = await response.json();
-      navigate(`/chat/${newChat.chat._id}`, {
-        state: { isNewChat: true, justCreated: true },
-      });
-    } catch (err) {
-      console.error("Error creating new chat:", err);
-    }
+  const handleNewChat = () => {
+    navigate("/chat/new", {
+      state: { isNewChat: true },
+    });
   };
 
   // Icons

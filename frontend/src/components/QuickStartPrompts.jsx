@@ -1,31 +1,17 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { createChat } from "../services/userAPI";
 import promptList from "../components/PromptList";
 
 export default function CreateQuickStartPrompts() {
   const navigate = useNavigate();
 
-  const promptClicked = async (inputPrompt) => {
-    try {
-      // Create a new chat with the quick prompt directly
-      const data = await createChat(inputPrompt);
-      // Validate response structure
-      if (!data.chat || !data.chat._id) {
-        throw new Error("Invalid response structure: Missing chat._id");
-      }
-
-      // Navigate to the new chat page and pass the prompt as state
-      navigate(`/chat/${data.chat._id}`, {
-        state: {
-          isNewChat: true,
-          initialPrompt: inputPrompt,
-          justCreated: true,
-        },
-      });
-    } catch (err) {
-      console.error("Error handling quick start prompt:", err);
-    }
+  const promptClicked = (inputPrompt) => {
+    navigate("/chat/new", {
+      state: {
+        isNewChat: true,
+        initialPrompt: inputPrompt,
+      },
+    });
   };
 
   let chosenPrompts = [];

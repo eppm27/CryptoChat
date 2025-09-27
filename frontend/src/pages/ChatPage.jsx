@@ -208,12 +208,14 @@ const ChatPage = () => {
       isStreaming
     );
   }, [isLoading, isStreaming]);
-  const [, setError] = useState(null);
   const [showPrompts, setShowPrompts] = useState(false);
   const location = useLocation();
   const { chatId } = useParams();
   const navigate = useNavigate();
   const hasUserSentMessage = useRef(false);
+  const skipNextFetchRef = useRef(false);
+  const createdChatIdRef = useRef(null);
+  const hasProcessedInitialPrompt = useRef(false);
   const inputRef = useRef(null);
 
   // Generate unique message ID
@@ -231,26 +233,15 @@ const ChatPage = () => {
       timestamp: new Date().toISOString(),
     },
   ];
-  const initialiseNewChat = async () => {
-    try {
-      const chatData = await createChat();
-      return chatData.chat;
-    } catch (error) {
-      console.error("Error initializing new chat:", error);
-      setError("Failed to initialize new chat");
-      return null;
-    }
-  };
 
-  // Initialize chat
+  // Initialize chat messages when entering a conversation
   useEffect(() => {
-    const loadChatMessages = async (chatId) => {
+    const loadChatMessages = async (id) => {
       try {
         setIsLoading(true);
-        const chatData = await getChatMessages(chatId);
+        const chatData = await getChatMessages(id);
 
         if (chatData.messages && chatData.messages.length > 0) {
-          // Ensure all messages have IDs and proper timestamp mapping for stable rendering
           const messagesWithIds = chatData.messages.map((msg) => ({
             ...msg,
             id: msg._id || msg.id || generateMessageId(),
@@ -261,64 +252,73 @@ const ChatPage = () => {
           hasUserSentMessage.current = true;
         } else {
           setMessages(getWelcomeMsg());
+          hasUserSentMessage.current = false;
         }
       } catch (error) {
         console.error("Error loading chat messages:", error);
         setMessages(getWelcomeMsg());
+        hasUserSentMessage.current = false;
       } finally {
         setIsLoading(false);
       }
     };
 
-    const initializeChat = async () => {
-      if (chatId && chatId !== "new") {
-        setCurrentChatId(chatId);
-        await loadChatMessages(chatId);
-      } else if (location.state?.justCreated) {
-        // New chat was just created
-        if (location.state.isNewChat) {
-          setMessages(getWelcomeMsg());
-        }
-      } else {
-        // Create new chat if none exists
-        const newChat = await initialiseNewChat();
-        if (newChat) {
-          setCurrentChatId(newChat._id);
-          setMessages(getWelcomeMsg());
-          navigate(`/chat/${newChat._id}`, { replace: true });
-        }
+    if (chatId && chatId !== "new") {
+      setCurrentChatId(chatId);
+      if (skipNextFetchRef.current) {
+        skipNextFetchRef.current = false;
+        return;
       }
-    };
-
-    initializeChat();
-  }, [chatId, location.state, navigate]);
+      loadChatMessages(chatId);
+    } else {
+      setCurrentChatId(null);
+      setMessages(getWelcomeMsg());
+      hasUserSentMessage.current = false;
+      hasProcessedInitialPrompt.current = false;
+      setIsLoading(false);
+      setIsStreaming(false);
+      setActiveBotMessageId(null);
+    }
+  }, [chatId]);
 
   const handleSendMessage = useCallback(
     async (messageText = null) => {
-      const textToSend = messageText || input.trim();
+      const rawText = messageText ?? input;
+      const textToSend = rawText.trim();
       if (!textToSend || isLoading) return;
 
-      const userMessage = {
-        id: generateMessageId(),
-        content: textToSend,
-        role: "user",
-        timestamp: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, userMessage]);
-      setInput("");
       setIsLoading(true);
-      hasUserSentMessage.current = true;
 
-      // Brief delay to ensure thinking bubble shows smoothly
-      setTimeout(() => {
-        if (isLoading) {
-          // Ensure UI updates to show thinking bubble
-        }
-      }, 100);
+      let chatIdToUse = currentChatId;
 
       try {
-        const response = await fetch(`/api/chat/${currentChatId}/messages`, {
+        if (!chatIdToUse) {
+          const chatData = await createChat(textToSend);
+          chatIdToUse = chatData?.chat?._id;
+
+          if (!chatIdToUse) {
+            throw new Error("Failed to create chat");
+          }
+
+          setCurrentChatId(chatIdToUse);
+          createdChatIdRef.current = chatIdToUse;
+        }
+
+        const userMessage = {
+          id: generateMessageId(),
+          content: textToSend,
+          role: "user",
+          timestamp: new Date().toISOString(),
+        };
+
+        setMessages((prev) => [...prev, userMessage]);
+        if (!messageText) {
+          setInput("");
+        }
+
+        hasUserSentMessage.current = true;
+
+        const response = await fetch(`/api/chat/${chatIdToUse}/messages`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -342,9 +342,6 @@ const ChatPage = () => {
 
         setMessages((prev) => [...prev, botMessage]);
 
-        // Note: setIsStreaming(true) will be called when we receive first content
-        // This allows the thinking bubble to show while waiting for first response
-
         // Throttle updates to reduce flickering during streaming
         let updateTimeout = null;
         const updateBotMessage = () => {
@@ -363,7 +360,6 @@ const ChatPage = () => {
         while (true) {
           const { done, value } = await reader.read();
           if (done) {
-            // Final update
             if (updateTimeout) clearTimeout(updateTimeout);
             updateBotMessage();
             break;
@@ -378,25 +374,14 @@ const ChatPage = () => {
                 const data = JSON.parse(line.slice(6));
 
                 if (data.type === "content") {
-                  console.log("📝 Received content chunk:", data.content);
                   botMessage.content += data.content;
-                  // Set streaming to true on first content to hide thinking bubble
                   setIsStreaming(true);
-                  // Throttle content updates with smoother timing
                   if (updateTimeout) clearTimeout(updateTimeout);
                   updateTimeout = setTimeout(updateBotMessage, 25);
                 } else if (data.type === "visualization") {
-                  console.log(
-                    "📊 Received visualization event:",
-                    data.visualization
-                  );
                   botMessage.visualization = data.visualization;
-                  // Update immediately for visualization
                   updateBotMessage();
                 } else if (data.type === "complete") {
-                  console.log("✅ Received complete event:", data);
-                  // Handle the final complete message from backend
-                  // Update with the complete message data from database
                   if (data.llmMessage) {
                     botMessage = {
                       ...botMessage,
@@ -419,12 +404,9 @@ const ChatPage = () => {
                   }
                   if (updateTimeout) clearTimeout(updateTimeout);
                   updateBotMessage();
-                  // Mark streaming as complete
-                  console.log("🏁 Setting streaming to false");
                   setIsStreaming(false);
                   setActiveBotMessageId(null);
                 } else if (data.type === "start") {
-                  // Initial message from backend - no action needed
                   console.log("LLM processing started");
                 }
               } catch (e) {
@@ -435,7 +417,6 @@ const ChatPage = () => {
         }
       } catch (error) {
         console.error("Error sending message:", error);
-        console.log("🚨 Setting loading and streaming to false due to error");
         setActiveBotMessageId(null);
         setMessages((prev) => [
           ...prev,
@@ -448,7 +429,6 @@ const ChatPage = () => {
           },
         ]);
       } finally {
-        console.log("🔄 Finally block: setting loading and streaming to false");
         setIsLoading(false);
         setIsStreaming(false);
         setActiveBotMessageId(null);
@@ -456,6 +436,40 @@ const ChatPage = () => {
     },
     [input, isLoading, currentChatId]
   );
+
+  // Auto-send prompt passed through navigation state (e.g., quick prompts)
+  useEffect(() => {
+    const initialPrompt = location.state?.initialPrompt;
+
+    if (
+      chatId === "new" &&
+      initialPrompt &&
+      !hasProcessedInitialPrompt.current &&
+      !isLoading
+    ) {
+      hasProcessedInitialPrompt.current = true;
+      handleSendMessage(initialPrompt);
+
+      const { initialPrompt: _ignored, ...restState } = location.state || {};
+      navigate(location.pathname, { replace: true, state: restState });
+    }
+  }, [chatId, handleSendMessage, isLoading, location.pathname, location.state, navigate]);
+
+  // Replace `/chat/new` with the real chat ID once the first exchange completes
+  useEffect(() => {
+    if (
+      chatId === "new" &&
+      currentChatId &&
+      !isLoading &&
+      !isStreaming &&
+      createdChatIdRef.current === currentChatId
+    ) {
+      skipNextFetchRef.current = true;
+      const { initialPrompt, ...restState } = location.state || {};
+      navigate(`/chat/${currentChatId}`, { replace: true, state: restState });
+      createdChatIdRef.current = null;
+    }
+  }, [chatId, currentChatId, isLoading, isStreaming, navigate, location.state]);
 
   const handleSavePrompt = useCallback(async (content) => {
     try {

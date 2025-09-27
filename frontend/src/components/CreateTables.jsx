@@ -156,7 +156,7 @@ const MobileCard = ({
     }
   };
 
-  const handleChatCreation = async () => {
+  const handleChatCreation = () => {
     let prompt;
     if (row.name) {
       prompt = `Tell me about ${row.name}`;
@@ -165,24 +165,9 @@ const MobileCard = ({
     }
 
     if (!prompt) return;
-
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ prompt }),
-      });
-
-      if (!response.ok) throw new Error("Failed to create a new chat");
-      const newChat = await response.json();
-      navigate(`/chat/${newChat.id}`);
-    } catch (error) {
-      console.error("Error creating chat:", error);
-      message.error("Failed to start chat");
-    }
+    navigate("/chat/new", {
+      state: { initialPrompt: prompt, isNewChat: true },
+    });
   };
 
   const handleCardClick = async () => {
@@ -618,7 +603,7 @@ function fixedHeaderContent(inputTableType) {
   );
 }
 
-const handleCellClick = async (column, row, navigate) => {
+const handleCellClick = (column, row, navigate) => {
   let prompt;
   if (row.name) {
     prompt = `Tell me about ${row.name}`;
@@ -627,30 +612,9 @@ const handleCellClick = async (column, row, navigate) => {
   }
 
   if (!prompt) return;
-
-  try {
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify({ content: prompt }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to create new chat");
-    }
-
-    const data = await response.json();
-
-    navigate(`/chat/${data.chat._id}`, {
-      state: { initialPrompt: prompt, isNewChat: true },
-    });
-  } catch (err) {
-    console.error("Error:", err);
-    navigate("/chat");
-  }
+  navigate("/chat/new", {
+    state: { initialPrompt: prompt, isNewChat: true },
+  });
 };
 
 function rowContent(

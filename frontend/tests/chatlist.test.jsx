@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { Router } from "react-router-dom";
+import { createMemoryHistory } from "history";
 import ChatListPage from "../src/pages/ChatlistPage";
 import * as userAPI from "../src/services/userAPI";
 import "@testing-library/jest-dom";
@@ -28,14 +29,20 @@ describe("ChatListPage", () => {
     vi.clearAllMocks();
   });
 
+  const renderWithHistory = () => {
+    const history = createMemoryHistory({ initialEntries: ["/chat"] });
+    render(
+      <Router location={history.location} navigator={history}>
+        <ChatListPage />
+      </Router>
+    );
+    return history;
+  };
+
   it("renders the page and fetches chats", async () => {
     userAPI.getAllChats.mockResolvedValue(mockChats);
 
-    render(
-      <BrowserRouter>
-        <ChatListPage />
-      </BrowserRouter>
-    );
+    renderWithHistory();
 
     expect(screen.getByText("+ Start New Chat")).toBeInTheDocument();
 
@@ -48,11 +55,7 @@ describe("ChatListPage", () => {
   it("handles errors when fetching chats", async () => {
     userAPI.getAllChats.mockRejectedValue(new Error("Failed to fetch chats"));
 
-    render(
-      <BrowserRouter>
-        <ChatListPage />
-      </BrowserRouter>
-    );
+    renderWithHistory();
 
     await waitFor(() => {
       expect(
@@ -62,19 +65,12 @@ describe("ChatListPage", () => {
   });
 
   it("starts a new chat when the button is clicked", async () => {
-    const mockNewChat = { chat: { _id: "3" } };
-    userAPI.createChat.mockResolvedValue(mockNewChat);
-
-    render(
-      <BrowserRouter>
-        <ChatListPage />
-      </BrowserRouter>
-    );
+    const history = renderWithHistory();
 
     fireEvent.click(screen.getByText("+ Start New Chat"));
 
     await waitFor(() => {
-      expect(userAPI.createChat).toHaveBeenCalledTimes(1);
+      expect(history.location.pathname).toBe("/chat/new");
     });
   });
 
@@ -87,11 +83,7 @@ describe("ChatListPage", () => {
       ],
     });
 
-    render(
-      <BrowserRouter>
-        <ChatListPage />
-      </BrowserRouter>
-    );
+    renderWithHistory();
 
     await waitFor(() => {
       expect(screen.getByText("Chat 1")).toBeInTheDocument();
@@ -107,11 +99,7 @@ describe("ChatListPage", () => {
   it("displays a message when no chats are available", async () => {
     userAPI.getAllChats.mockResolvedValue([]);
 
-    render(
-      <BrowserRouter>
-        <ChatListPage />
-      </BrowserRouter>
-    );
+    renderWithHistory();
 
     await waitFor(() => {
       expect(
@@ -123,11 +111,7 @@ describe("ChatListPage", () => {
   it("removes a chat from the list after successful deletion", async () => {
     userAPI.getAllChats.mockResolvedValue(mockChats);
 
-    render(
-      <BrowserRouter>
-        <ChatListPage />
-      </BrowserRouter>
-    );
+    renderWithHistory();
 
     await waitFor(() => {
       expect(screen.getByText("Chat 1")).toBeInTheDocument();
