@@ -199,16 +199,16 @@ export const PriceChange = ({ value, className, ...props }) => {
   );
 };
 
-// Bottom Sheet Component for mobile
+// Bottom Sheet Component for mobile and modal for desktop
 export const BottomSheet = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
 
   return (
     <>
-      <div
-        className="fixed inset-0 bg-black/50 z-40 md:hidden"
-        onClick={onClose}
-      />
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
+
+      {/* Mobile Bottom Sheet */}
       <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl z-50 transform transition-transform duration-200 md:hidden">
         <div className="p-4">
           <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4" />
@@ -218,6 +218,26 @@ export const BottomSheet = ({ isOpen, onClose, children, title }) => {
             </h3>
           )}
           {children}
+        </div>
+      </div>
+
+      {/* Desktop Modal */}
+      <div
+        className="fixed inset-0 z-50 hidden md:flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-6">
+            {title && (
+              <h3 className="text-xl font-semibold text-neutral-900 mb-4 text-center">
+                {title}
+              </h3>
+            )}
+            {children}
+          </div>
         </div>
       </div>
     </>
