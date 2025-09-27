@@ -216,6 +216,7 @@ const ChatPage = () => {
   const skipNextFetchRef = useRef(false);
   const createdChatIdRef = useRef(null);
   const hasProcessedInitialPrompt = useRef(false);
+  const lastChatParamRef = useRef(chatId);
   const inputRef = useRef(null);
 
   // Generate unique message ID
@@ -274,10 +275,16 @@ const ChatPage = () => {
       setCurrentChatId(null);
       setMessages(getWelcomeMsg());
       hasUserSentMessage.current = false;
-      hasProcessedInitialPrompt.current = false;
       setIsLoading(false);
       setIsStreaming(false);
       setActiveBotMessageId(null);
+    }
+  }, [chatId]);
+
+  useEffect(() => {
+    if (lastChatParamRef.current !== chatId) {
+      lastChatParamRef.current = chatId;
+      hasProcessedInitialPrompt.current = false;
     }
   }, [chatId]);
 
@@ -465,7 +472,7 @@ const ChatPage = () => {
       createdChatIdRef.current === currentChatId
     ) {
       skipNextFetchRef.current = true;
-      const { initialPrompt, ...restState } = location.state || {};
+      const {  ...restState } = location.state || {};
       navigate(`/chat/${currentChatId}`, { replace: true, state: restState });
       createdChatIdRef.current = null;
     }

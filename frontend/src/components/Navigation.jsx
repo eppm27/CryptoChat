@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { fetchUserData } from "../services/userAPI.jsx";
+import DefaultPfp from "../assets/default-pfp.png";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "../utils/cn";
 import { Button } from "../components/ui/index";
@@ -228,6 +230,22 @@ const MobileNavigation = () => {
 };
 
 const DesktopHeader = () => {
+  const [userData, setUserData] = useState(null);
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const user = await fetchUserData();
+        if (mounted) setUserData(user);
+      } catch {
+        // ignore - user may not be logged in
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
   const location = useLocation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -304,9 +322,12 @@ const DesktopHeader = () => {
               className="flex items-center space-x-2 p-2 rounded-xl hover:bg-neutral-50 transition-colors"
             >
               <img
-                src="/image.png"
+                src={userData?.pfp || DefaultPfp}
                 alt="Profile"
-                className="w-8 h-8 rounded-full object-contain"
+                className="w-8 h-8 rounded-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = DefaultPfp;
+                }}
               />
             </Link>
 
