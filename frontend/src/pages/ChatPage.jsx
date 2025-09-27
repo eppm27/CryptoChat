@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import {
@@ -11,6 +17,153 @@ import ChatChart from "../components/ChatChart";
 import promptList from "../components/PromptList";
 import { Button, Card, Skeleton, BottomSheet } from "../ui/index";
 import { cn } from "../utils/cn";
+
+// Icons - moved outside component to prevent recreation
+const SendIcon = () => (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+    />
+  </svg>
+);
+
+const BookmarkIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+    />
+  </svg>
+);
+
+const SparklesIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM13 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2h-2zM5 13a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM13 13a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2z"
+    />
+  </svg>
+);
+
+const MicIcon = () => (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+    />
+  </svg>
+);
+
+// MessageBubble component - moved outside to prevent recreation
+const MessageBubble = React.memo(({ message, onSavePrompt }) => {
+  const isUser = message.role === "user";
+  const isBot = message.role === "chatBot";
+
+  // Memoize the visualization prop to prevent unnecessary re-renders
+  const visualizationData = useMemo(() => {
+    if (!message.visualization) return null;
+    return Array.isArray(message.visualization)
+      ? message.visualization[0]
+      : message.visualization;
+  }, [message.visualization]);
+
+  return (
+    <div
+      className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
+    >
+      <div
+        className={cn(
+          "max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 md:px-5 md:py-4 break-words transition-all duration-200",
+          isUser
+            ? "bg-primary-600 hover:bg-primary-700 text-white ml-2 md:ml-4 shadow-lg"
+            : "bg-white border border-neutral-200 mr-2 md:mr-4 shadow-md hover:shadow-lg"
+        )}
+      >
+        {isBot && !message.isError && (
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
+                <SparklesIcon />
+              </div>
+              <span className="text-sm font-medium text-neutral-600">
+                CryptoGPT
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onSavePrompt(message.content)}
+              className="h-6 w-6 p-0"
+            >
+              <BookmarkIcon />
+            </Button>
+          </div>
+        )}
+
+        <div
+          className={cn(
+            "prose prose-sm max-w-none",
+            isUser ? "prose-invert" : "",
+            message.isError ? "text-danger-600" : ""
+          )}
+        >
+          <ReactMarkdown>{message.content}</ReactMarkdown>
+        </div>
+
+        {message.visualization && (
+          <div className="mt-4 rounded-xl overflow-hidden">
+            <ChatChart visualization={visualizationData} />
+          </div>
+        )}
+
+        <div
+          className={cn(
+            "text-xs mt-2 opacity-70",
+            isUser ? "text-right text-primary-100" : "text-neutral-500"
+          )}
+        >
+          {new Date(
+            message.timestamp || message.createdAt || new Date()
+          ).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+MessageBubble.displayName = "MessageBubble";
 
 const ChatPage = () => {
   const [messages, setMessages] = useState([]);
@@ -52,71 +205,6 @@ const ChatPage = () => {
       return null;
     }
   };
-
-  // Icons
-  const SendIcon = () => (
-    <svg
-      className="w-5 h-5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-      />
-    </svg>
-  );
-
-  const BookmarkIcon = () => (
-    <svg
-      className="w-4 h-4"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-      />
-    </svg>
-  );
-
-  const SparklesIcon = () => (
-    <svg
-      className="w-4 h-4"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM13 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2h-2zM5 13a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM13 13a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2z"
-      />
-    </svg>
-  );
-
-  const MicIcon = () => (
-    <svg
-      className="w-5 h-5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-      />
-    </svg>
-  );
 
   // Initialize chat
   useEffect(() => {
@@ -354,85 +442,6 @@ const ChatPage = () => {
     }
     previousMessageCount.current = messages.length;
   }, [messages]);
-
-  const MessageBubble = React.memo(({ message, onSavePrompt }) => {
-    const isUser = message.role === "user";
-    const isBot = message.role === "chatBot";
-
-    return (
-      <div
-        className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
-      >
-        <div
-          className={cn(
-            "max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 md:px-5 md:py-4 break-words transition-all duration-200",
-            isUser
-              ? "bg-primary-600 hover:bg-primary-700 text-white ml-2 md:ml-4 shadow-lg"
-              : "bg-white border border-neutral-200 mr-2 md:mr-4 shadow-md hover:shadow-lg"
-          )}
-        >
-          {isBot && !message.isError && (
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
-                  <SparklesIcon />
-                </div>
-                <span className="text-sm font-medium text-neutral-600">
-                  CryptoGPT
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onSavePrompt(message.content)}
-                className="h-6 w-6 p-0"
-              >
-                <BookmarkIcon />
-              </Button>
-            </div>
-          )}
-
-          <div
-            className={cn(
-              "prose prose-sm max-w-none",
-              isUser ? "prose-invert" : "",
-              message.isError ? "text-danger-600" : ""
-            )}
-          >
-            <ReactMarkdown>{message.content}</ReactMarkdown>
-          </div>
-
-          {message.visualization && (
-            <div className="mt-4 rounded-xl overflow-hidden">
-              <ChatChart
-                visualization={
-                  Array.isArray(message.visualization)
-                    ? message.visualization[0]
-                    : message.visualization
-                }
-              />
-            </div>
-          )}
-
-          <div
-            className={cn(
-              "text-xs mt-2 opacity-70",
-              isUser ? "text-right text-primary-100" : "text-neutral-500"
-            )}
-          >
-            {new Date(
-              message.timestamp || message.createdAt || new Date()
-            ).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  });
-
-  MessageBubble.displayName = "MessageBubble";
 
   return (
     <div className="fixed inset-0 flex flex-col bg-gradient-to-b from-neutral-50 to-primary-50/20 z-10 pt-14 md:pt-16">
