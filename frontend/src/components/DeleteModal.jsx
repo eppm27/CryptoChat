@@ -289,19 +289,12 @@ const DeleteModal = ({ closeModal, rowData, modalType, onSuccess }) => {
         <div className="flex flex-wrap justify-between gap-3">
           <div className="flex gap-2">
             <Button
-              variant="ghost"
-              onClick={closeModal}
-              className="border border-neutral-200"
-            >
-              Cancel
-            </Button>
-            <Button
               variant="outline"
               onClick={handleChat}
               loading={isChatting}
               className="flex items-center gap-2"
             >
-              <Sparkles className="h-4 w-4" /> AI Insights
+              <Sparkles className="h-4 w-4" /> CryptoGPT
             </Button>
             {!isSaved && (
               <Button
