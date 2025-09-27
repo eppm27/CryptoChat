@@ -100,7 +100,11 @@ const getCryptoDetailsDatabase = async (req, res) => {
         watchlistIds.includes(crypto.id)
       );
     } else if (type === "cryptoDetails") {
-      cryptoData = allCryptos.find((term) => term.id === cryptos);
+      const targetId = Array.isArray(cryptos)
+        ? cryptos[0]
+        : cryptos;
+
+      cryptoData = allCryptos.find((term) => term.id === targetId);
     } else if (cryptos.length === 0 && type === "default") {
       // default - meaning it would be giving everything and ordered for the explore page
       // cryptoData = allCryptos.sort((a, b) => a.market_cap_rank - b.market_cap_rank);

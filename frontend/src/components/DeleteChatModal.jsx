@@ -1,53 +1,68 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { message } from "antd";
 import { deleteChat } from "../services/userAPI";
+import { Button, Card } from "./ui";
+import { Trash2, X } from "lucide-react";
 
 const DeleteChatModal = ({ closeModal, chatId, onSuccess }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDelete = async () => {
     try {
+      setIsDeleting(true);
       await deleteChat(chatId);
       message.success("Chat deleted successfully");
       onSuccess?.();
       closeModal();
     } catch (error) {
       console.error("Error deleting chat:", error);
-      message.error("Failed to delete chat.");
+      message.error(error.message || "Failed to delete chat");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50 px-4">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-300 max-w-md w-full p-6 relative">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold text-gray-800">Delete Chat</h2>
-          <button
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-neutral-900/60 backdrop-blur-sm">
+      <Card className="w-full max-w-md p-6 space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-xs uppercase text-danger-600 font-semibold">
+              Delete Chat
+            </p>
+            <h2 className="text-2xl font-semibold text-neutral-900">
+              Remove conversation?
+            </h2>
+            <p className="text-sm text-neutral-500">
+              This action will permanently delete the selected chat history. You
+              won&apos;t be able to recover the messages once removed.
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={closeModal}
-            className="text-gray-500 hover:text-gray-700 transition"
+            className="h-9 w-9 p-0 text-neutral-500"
           >
-            ✕
-          </button>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
-        <p className="text-gray-700 text-md mb-6">
-          Are you sure you want to delete this chat?
-        </p>
-
-        <div className="flex justify-end gap-4">
-          <button
-            onClick={closeModal}
-            className="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-gray-800 transition"
-          >
+        <div className="flex justify-end gap-3">
+          <Button variant="ghost" onClick={closeModal}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="danger"
             onClick={handleDelete}
-            className="px-4 py-2 rounded-md bg-red-500 hover:bg-red-600 text-white transition"
+            loading={isDeleting}
+            className="flex items-center gap-2"
           >
-            Delete
-          </button>
+            <Trash2 className="h-4 w-4" /> Delete Chat
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

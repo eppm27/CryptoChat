@@ -1,696 +1,721 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Tabs, Tab, Divider, Box, Skeleton, Tooltip } from "@mui/material";
-import { Element, Link } from "react-scroll";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import { fetchCryptoDetailsDatabase } from "../services/cryptoAPI";
 import { message } from "antd";
+import { Button, Card, Skeleton, PriceChange, Badge } from "../components/ui";
 import CryptoGraph from "../components/CryptoGraph.jsx";
-import { ArrowDropUp, ArrowDropDown } from "@mui/icons-material";
-import createHyperlinkBox from "../components/CreateHyperlinkBox";
-import PropTypes from "prop-types";
-import { Eye } from "lucide-react";
+import RSIGraph from "../components/CryptoIndicatorGraph.jsx";
 import {
   fetchUserData,
   addCryptoToWatchlist,
   deleteCryptoFromWatchlist,
 } from "../services/userAPI.jsx";
-import RSIGraph from "../components/CryptoIndicatorGraph.jsx";
+import { fetchCryptoDetailsDatabase } from "../services/cryptoAPI.jsx";
+import { ExternalLink, BookmarkPlus, BookmarkMinus, Clock3 } from "lucide-react";
+import PropTypes from "prop-types";
 
-const InfoRow = ({ label, value }) => (
-  <>
-    <Box
-      display="flex"
-      justifyContent="space-between"
-      alignItems="flex-start"
-      flexWrap="wrap"
-      py={1}
-    >
-      <span className="text-gray-500 font-semibold">{label}</span>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "flex-end",
-          flexWrap: "wrap",
-          gap: "8px",
-          textAlign: "right",
-          flex: "1 1 auto",
-        }}
-      >
-        {value}
-      </Box>
-    </Box>
-    <Divider />
-  </>
-);
+const formatCurrency = (value, { compact = false, currency = "USD" } = {}) => {
+  if (!Number.isFinite(value)) return "—";
 
-const convertDate = (date) => {
+  if (compact && Math.abs(value) >= 1000) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      notation: "compact",
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: Math.abs(value) < 1 ? 2 : 0,
+    maximumFractionDigits: Math.abs(value) < 1000 ? 2 : 0,
+  }).format(value);
+};
+
+const formatNumber = (value, { compact = false, suffix = "" } = {}) => {
+  if (!Number.isFinite(value)) return "—";
+
+  if (compact && Math.abs(value) >= 1000) {
+    return `${new Intl.NumberFormat("en-US", {
+      notation: "compact",
+      maximumFractionDigits: 2,
+    }).format(value)}${suffix}`;
+  }
+
+  return `${value.toLocaleString(undefined, {
+    maximumFractionDigits: Math.abs(value) < 1 ? 4 : 2,
+  })}${suffix}`;
+};
+
+const formatDateWithRelative = (date) => {
+  if (!date) return "—";
+
   const givenDate = new Date(date);
+  if (Number.isNaN(givenDate.getTime())) return "—";
 
-  const formatDate = givenDate.toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
+  const formatter = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
+    month: "short",
+    day: "numeric",
   });
 
-  const currentDate = new Date();
-  const dateDiff = currentDate - givenDate;
-  const diffInYears = dateDiff / (1000 * 60 * 60 * 24 * 365);
-  const yearsAgo = Math.floor(diffInYears);
+  const now = new Date();
+  const diffMs = now.getTime() - givenDate.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffMonths = Math.floor(diffDays / 30.44);
+  const diffYears = Math.floor(diffMonths / 12);
 
-  if (yearsAgo >= 1) {
-    return `${formatDate} (${yearsAgo} ${
-      yearsAgo === 1 ? "year" : "years"
-    } ago)`;
+  let relative;
+  if (diffYears >= 1) {
+    relative = `${diffYears} year${diffYears === 1 ? "" : "s"} ago`;
+  } else if (diffMonths >= 1) {
+    relative = `${diffMonths} month${diffMonths === 1 ? "" : "s"} ago`;
+  } else if (diffDays > 0) {
+    relative = `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
   } else {
-    // convert year to months
-    const diffInMonths = dateDiff / (1000 * 60 * 60 * 24 * 30.44);
-    const monthsAgo = Math.floor(diffInMonths);
-
-    if (monthsAgo >= 1) {
-      return `${formatDate} (${monthsAgo} ${
-        monthsAgo === 1 ? "month" : "months"
-      } ago)`;
-    }
-    // convert to days
-    const diffInDays = Math.floor(dateDiff / (1000 * 60 * 60 * 24));
-
-    if (diffInDays === 0) {
-      return `${formatDate} (today)`;
-    } else {
-      return `${formatDate} (${diffInDays} ${
-        diffInDays === 1 ? "day" : "days"
-      } ago)`;
-    }
+    relative = "today";
   }
+
+  return `${formatter.format(givenDate)} (${relative})`;
 };
 
 const CoinDescription = ({ description }) => {
-  const [expand, setExpand] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  if (typeof description !== "string") {
-    return null;
+  if (typeof description !== "string" || description.trim().length === 0) {
+    return <p className="text-sm text-neutral-500">No description available.</p>;
   }
 
-  const splitLines = description.split("\n");
-  const visibleLines = expand ? splitLines : splitLines.slice(0, 2);
+  const paragraphs = description
+    .replaceAll("\r\n", "\n")
+    .split("\n")
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  const visibleParagraphs = isExpanded ? paragraphs : paragraphs.slice(0, 2);
 
   return (
-    <div className="flex flex-col gap-2">
-      {/* displayed content */}
-      <div>
-        {visibleLines.map((line, index) => (
-          <span key={index}>
-            {line}
-            <br />
-          </span>
-        ))}
-      </div>
+    <div className="space-y-3">
+      {visibleParagraphs.map((paragraph, index) => (
+        <p key={index} className="text-sm leading-relaxed text-neutral-700">
+          {paragraph}
+        </p>
+      ))}
 
-      {/* divider and expand button */}
-      {splitLines.length > 2 && (
-        <div className="border-t-2 border-gray-300 pt-2 flex">
-          <button
-            onClick={() => setExpand(!expand)}
-            className="ml-auto bg-gray-200 hover:bg-gray-300 text-gray-800 text-md font-medium py-1 px-3 rounded-md shadow-sm transition"
-          >
-            {expand ? "Show Less" : "Show More"}
-          </button>
-        </div>
+      {paragraphs.length > 2 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="self-start"
+        >
+          {isExpanded ? "Show Less" : "Show More"}
+        </Button>
       )}
     </div>
   );
 };
 
-const CryptoDetailsPage = () => {
-  const { cryptoId } = useParams();
-  const [activeTab, setActiveTab] = useState("overview");
-  const [cryptoData, setCryptoData] = useState();
-  const [news, setNews] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [tooltipOpen, setTooltipOpen] = useState(false);
-  const [inWatchlist, setInWatchlist] = useState(false);
-  const [cryptoUser, setCryptoUser] = useState();
+CoinDescription.propTypes = {
+  description: PropTypes.string,
+};
 
-  useEffect(() => {
-    const fetchCryptoData = async () => {
+const mapCommunityLinks = (linksObject) => {
+  if (!linksObject || typeof linksObject !== "object") return [];
+  return Object.entries(linksObject)
+    .filter(([, value]) => Boolean(value))
+    .map(([key, value]) => ({
+      label: key.charAt(0).toUpperCase() + key.slice(1),
+      href: value,
+    }));
+};
+
+const mapWebsiteLinks = (links) => {
+  if (!links) return [];
+  const array = Array.isArray(links) ? links : [links];
+  return array
+    .filter(Boolean)
+    .map((link) => {
       try {
-        const data = await fetchCryptoDetailsDatabase(
-          cryptoId,
-          "cryptoDetails"
-        );
-        setCryptoData(data);
-        return data.symbol;
+        const url = new URL(link);
+        return {
+          label: url.hostname.replace(/^www\./, ""),
+          href: link,
+        };
+      // eslint-disable-next-line no-unused-vars
       } catch (error) {
-        console.error("Error:", error);
-        message.error(
-          error.message || "Failed to fetch crypto data for crypto"
-        );
-      }
-    };
-
-    const fetchNews = async (symbol) => {
-      try {
-        const response = await fetch(
-          `/api/news/${symbol.toUpperCase()}?limit=5`
-        );
-        if (!response.ok) {
-          throw new Error("Failed to fetch news");
-        }
-        const data = await response.json();
-        setNews(data);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    const checkWatchlistState = async () => {
-      try {
-        const response = await fetchUserData();
-        const userWatchlist = response.watchlist;
-        const cryptoState = userWatchlist.filter(
-          (crypto) => crypto.cryptoId === cryptoId
-        );
-
-        if (cryptoState.length > 0) {
-          setInWatchlist(true);
-          setCryptoUser(cryptoState[0]);
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    fetchCryptoData().then((symbol) => {
-      if (symbol) {
-        fetchNews(symbol).finally(() => {
-          setIsLoading(false);
-        });
-      } else {
-        setIsLoading(false);
+        return {
+          label: link,
+          href: link,
+        };
       }
     });
+};
 
-    // fetch for user Data
-    checkWatchlistState();
-  }, [cryptoId]);
+const CryptoDetailsPage = () => {
+  const { cryptoId } = useParams();
+  const [cryptoData, setCryptoData] = useState(null);
+  const [news, setNews] = useState([]);
+  const [isCryptoLoading, setIsCryptoLoading] = useState(true);
+  const [isNewsLoading, setIsNewsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [watchlistEntry, setWatchlistEntry] = useState(null);
+  const [isTogglingWatchlist, setIsTogglingWatchlist] = useState(false);
 
-  const tabSections = React.useMemo(
-    () => [
-      { label: "Overview", name: "overview" },
-      { label: "Info", name: "info" },
-      { label: "News", name: "news" },
-    ],
-    []
-  );
-
-  // handles scroll
   useEffect(() => {
-    const handleScroll = () => {
-      const sections = tabSections.map((section) =>
-        document.getElementById(section.name)
-      );
-      sections.forEach((section, index) => {
-        if (!section) return;
-        const rect = section.getBoundingClientRect();
-        if (rect.top <= 80 && rect.bottom >= 80) {
-          setActiveTab(tabSections[index].name);
+    let isMounted = true;
+
+    const loadData = async () => {
+      setIsCryptoLoading(true);
+      setIsNewsLoading(true);
+      setError(null);
+
+      try {
+        const [cryptoResponse, user] = await Promise.all([
+          fetchCryptoDetailsDatabase(cryptoId, "cryptoDetails"),
+          fetchUserData().catch(() => null),
+        ]);
+
+        if (!isMounted) return;
+
+        if (!cryptoResponse || !cryptoResponse.id) {
+          throw new Error("Unable to locate cryptocurrency details.");
         }
-      });
+
+        setCryptoData(cryptoResponse);
+
+        if (user?.watchlist) {
+          const entry = user.watchlist.find(
+            (item) => item.cryptoId === cryptoId
+          );
+          setWatchlistEntry(entry || null);
+        } else {
+          setWatchlistEntry(null);
+        }
+
+        try {
+          const symbol = (cryptoResponse.symbol || "").toUpperCase();
+          if (symbol) {
+            const response = await fetch(`/api/news/${symbol}?limit=5`);
+            if (!response.ok) {
+              throw new Error("Failed to fetch news");
+            }
+            const newsData = await response.json();
+            if (isMounted) {
+              setNews(Array.isArray(newsData) ? newsData : []);
+            }
+          } else {
+            setNews([]);
+          }
+        } catch (newsError) {
+          console.error("Error loading news:", newsError);
+          if (isMounted) {
+            setNews([]);
+          }
+        } finally {
+          if (isMounted) {
+            setIsNewsLoading(false);
+          }
+        }
+      } catch (err) {
+        console.error("Crypto details error:", err);
+        if (isMounted) {
+          setError(err.message || "Failed to load crypto details");
+          setCryptoData(null);
+          setIsNewsLoading(false);
+        }
+      } finally {
+        if (isMounted) {
+          setIsCryptoLoading(false);
+        }
+      }
     };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [tabSections]);
+    loadData();
 
-  // handles manual tab selection
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-  };
+    return () => {
+      isMounted = false;
+    };
+  }, [cryptoId]);
 
-  const handleWatchlistButton = async () => {
+  const inWatchlist = Boolean(watchlistEntry);
+
+  const handleWatchlistToggle = async () => {
+    if (!cryptoData || isTogglingWatchlist) return;
+
     try {
+      setIsTogglingWatchlist(true);
       if (inWatchlist) {
-        await deleteCryptoFromWatchlist(cryptoUser);
-        setInWatchlist(false);
+        await deleteCryptoFromWatchlist(watchlistEntry);
+        setWatchlistEntry(null);
+        message.success(`${cryptoData.name} removed from your watchlist`);
       } else {
-        const response = await addCryptoToWatchlist(cryptoData);
-        console.log(response);
-        setInWatchlist(true);
+        await addCryptoToWatchlist({
+          id: cryptoData.id,
+          name: cryptoData.name,
+          symbol: cryptoData.symbol,
+          image: cryptoData.image,
+        });
+        const user = await fetchUserData().catch(() => null);
+        const entry = user?.watchlist?.find((item) => item.cryptoId === cryptoId);
+        setWatchlistEntry(entry || null);
+        message.success(`${cryptoData.name} added to your watchlist`);
       }
-    } catch (error) {
-      console.log(
-        "failed to add/delete to watchlist from details page ",
-        error
+    } catch (err) {
+      console.error("Watchlist toggle failed:", err);
+      message.error(
+        err.message || "We couldn't update your watchlist. Please try again."
       );
+    } finally {
+      setIsTogglingWatchlist(false);
     }
   };
 
-  const getSentimentColor = (score) => {
-    if (score > 0.3) return "bg-green-100 text-green-800";
-    if (score < -0.3) return "bg-red-100 text-red-800";
-    return "bg-gray-100 text-gray-800";
-  };
+  const marketStats = useMemo(() => {
+    if (!cryptoData) return [];
 
-  const formatSentimentScore = (score) => {
-    if (!score) return "N/A";
-    return score.toFixed(2);
-  };
+    return [
+      {
+        label: "Market Cap",
+        value: formatCurrency(cryptoData.market_cap, { compact: true }),
+      },
+      {
+        label: "24h Volume",
+        value: formatCurrency(cryptoData.total_volume, { compact: true }),
+      },
+      {
+        label: "Fully Diluted Valuation",
+        value: formatCurrency(cryptoData.fully_diluted_valuation, {
+          compact: true,
+        }),
+      },
+      {
+        label: "Circulating Supply",
+        value: formatNumber(cryptoData.circulating_supply, {
+          compact: true,
+          suffix: ` ${cryptoData.symbol?.toUpperCase() || ""}`,
+        }),
+      },
+      {
+        label: "Total Supply",
+        value: formatNumber(cryptoData.total_supply, {
+          compact: true,
+          suffix: ` ${cryptoData.symbol?.toUpperCase() || ""}`,
+        }),
+      },
+      {
+        label: "Max Supply",
+        value: formatNumber(cryptoData.max_supply, {
+          compact: true,
+          suffix: ` ${cryptoData.symbol?.toUpperCase() || ""}`,
+        }),
+      },
+    ];
+  }, [cryptoData]);
+
+  const priceRanges = useMemo(() => {
+    if (!cryptoData) return [];
+
+    const ranges = [
+      {
+        label: "24h Range",
+        value: `${formatCurrency(cryptoData.low_24h)} – ${formatCurrency(
+          cryptoData.high_24h
+        )}`,
+      },
+    ];
+
+    if (Number.isFinite(cryptoData.low_7d) && Number.isFinite(cryptoData.high_7d)) {
+      ranges.push({
+        label: "7d Range",
+        value: `${formatCurrency(cryptoData.low_7d)} – ${formatCurrency(
+          cryptoData.high_7d
+        )}`,
+      });
+    }
+
+    ranges.push(
+      {
+        label: "All-Time High",
+        value: (
+          <div className="flex flex-col items-end">
+            <span>{formatCurrency(cryptoData.ath)}</span>
+            <span className="text-xs text-neutral-500">
+              {formatDateWithRelative(cryptoData.ath_date)}
+            </span>
+          </div>
+        ),
+        change: cryptoData.ath_change_percentage,
+      },
+      {
+        label: "All-Time Low",
+        value: (
+          <div className="flex flex-col items-end">
+            <span>{formatCurrency(cryptoData.atl)}</span>
+            <span className="text-xs text-neutral-500">
+              {formatDateWithRelative(cryptoData.atl_date)}
+            </span>
+          </div>
+        ),
+        change: cryptoData.atl_change_percentage,
+      }
+    );
+
+    return ranges;
+  }, [cryptoData]);
+
+  const categoryBadges = useMemo(() => {
+    if (!Array.isArray(cryptoData?.categories)) return [];
+    return cryptoData.categories.filter(Boolean).slice(0, 8);
+  }, [cryptoData]);
+
+  if (isCryptoLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50/30">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+          <Card className="p-6 space-y-4">
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-72 w-full" />
+          </Card>
+          <Card className="p-6">
+            <Skeleton className="h-6 w-40 mb-4" />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton key={index} className="h-20 w-full" />
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50/30 flex items-center justify-center px-4">
+        <Card className="max-w-lg w-full p-8 text-center space-y-4">
+          <h1 className="text-2xl font-semibold text-neutral-900">
+            We couldn't load this crypto
+          </h1>
+          <p className="text-neutral-600">{error}</p>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!cryptoData) {
+    return null;
+  }
+
+  const percentageChange24h = Number.parseFloat(
+    cryptoData.price_change_percentage_24h_in_currency
+  );
+  const priceChange24h = Number.parseFloat(cryptoData.price_change_24h);
+// eslint-disable-next-line react-hooks/rules-of-hooks
+const websiteLinks = useMemo(
+  () => mapWebsiteLinks(cryptoData?.homepageLink),
+  [cryptoData]
+);
+
+// eslint-disable-next-line react-hooks/rules-of-hooks
+const communityLinks = useMemo(
+  () => mapCommunityLinks(cryptoData?.communityLinks),
+  [cryptoData]
+);
+
+const primaryWebsite = websiteLinks[0]?.href;
 
   return (
-    <div className="mx-6">
-      <Tabs
-        value={activeTab}
-        onChange={handleTabChange}
-        className="fixed bg-white border-b-2 shadow-md left-0 w-full z-[100] opacity-100 top-20"
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{ top: "70px" }}
-      >
-        {tabSections.map((section) => (
-          <Tab
-            key={section.name}
-            label={section.label}
-            value={section.name}
-            component={Link}
-            to={section.name}
-            spy={true}
-            smooth={true}
-            duration={500}
-            offset={-60}
-            activeClass="text-blue-500"
-            sx={{
-              flex: tabSections.length <= 4 ? 1 : "unset",
-              minWidth: 110,
-              minHeight: 60,
-            }}
-          />
-        ))}
-      </Tabs>
-
-      <Element name="overview" className="h-auto pt-20" id="overview">
-        {cryptoData && !isLoading ? (
-          <div className="flex flex-col w-full">
-            {/* --- Top Info (Logo, Name, Symbol) --- */}
-            <div className="flex items-center gap-2">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50/30">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <Card className="p-6 space-y-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:justify-between lg:items-start">
+            <div className="flex items-start gap-4">
               <img
-                src={cryptoData.image}
-                className="w-10"
+                src={cryptoData.image || "/default-crypto-icon.png"}
                 alt={`${cryptoData.name} logo`}
+                className="h-16 w-16 rounded-2xl bg-white shadow"
+                onError={(event) => {
+                  event.currentTarget.src = "/default-crypto-icon.png";
+                }}
               />
-              <p className="font-bold text-xl">{cryptoData.name}</p>
-              <p className="text-gray-500">{cryptoData.symbol.toUpperCase()}</p>
-              <p className="text-gray-500">AUD</p>
-            </div>
-
-            {/* --- Price and Change Info --- */}
-            <div className="flex items-end gap-3 mt-4">
-              <p className="text-4xl font-bold">
-                {new Intl.NumberFormat("en-AU", {
-                  style: "currency",
-                  currency: "AUD",
-                }).format(cryptoData.current_price)}
-              </p>
-
-              <div className="flex flex-row items-center">
-                <p
-                  className={`text-lg ${
-                    cryptoData.price_change_24h >= 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {cryptoData.price_change_24h >= 0 ? (
-                    <ArrowDropUp fontSize="large" />
-                  ) : (
-                    <ArrowDropDown fontSize="large" />
-                  )}
-                </p>
-
-                <div className="flex flex-col gap-1 text-left">
-                  <p
-                    className={`text-xl font-bold ${
-                      cryptoData.price_change_percentage_24h_in_currency >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {cryptoData.price_change_percentage_24h_in_currency.toFixed(
-                      2
-                    )}
-                    %
-                  </p>
-                  <p
-                    className={`text-rg font-semibold ${
-                      cryptoData.price_change_24h >= 0
-                        ? "text-green-600"
-                        : "text-red-500"
-                    }`}
-                  >
-                    ${cryptoData.price_change_24h.toFixed(2)}
-                  </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold text-neutral-900">
+                    {cryptoData.name}
+                  </h1>
+                  <Badge className="uppercase">
+                    {cryptoData.symbol}
+                  </Badge>
                 </div>
-              </div>
-            </div>
-
-            {/* --- Watchlist Button --- */}
-            <div className="flex justify-end mt-4">
-              <button
-                className={`inline-flex justify-center gap-1 items-center h-10 py-2 px-4 rounded-xl text-white font-semibold text-sm focus:outline-none focus:ring-1 focus:ring-green-300 
-                ${
-                  inWatchlist
-                    ? "bg-red-500 hover:bg-red-600 transition-colors duration-300 ease-in-out"
-                    : "bg-green-500 hover:bg-green-600 transition-colors duration-300 ease-in-out"
-                }
-                `}
-                onClick={handleWatchlistButton}
-              >
-                <Eye />
-                {inWatchlist ? "Remove from Watchlist" : "Add to Watchlist"}
-              </button>
-            </div>
-
-            {/* --- Price Graph --- */}
-            <div className="mt-8">
-              <CryptoGraph cryptoId={cryptoId} />
-            </div>
-
-            {/* --- Statistics Section --- */}
-            <div className="flex flex-col mt-8">
-              <p className="text-left font-bold">
-                {cryptoData.name} Statistics
-              </p>
-              <Divider sx={{ marginTop: 1, marginBottom: 1 }} />
-
-              <Box>
-                <InfoRow
-                  label="Market Cap"
-                  value={`$${(cryptoData.market_cap ?? 0).toLocaleString()}`}
-                />
-                <InfoRow
-                  label="Fully Diluted Valuation"
-                  value={`$${(
-                    cryptoData.fully_diluted_valuation ?? 0
-                  ).toLocaleString()}`}
-                />
-                <InfoRow
-                  label="24 Hour Trading Volume"
-                  value={`$${(cryptoData.total_volume ?? 0).toLocaleString()}`}
-                />
-                <InfoRow
-                  label="Circulating Supply"
-                  value={(cryptoData.circulating_supply ?? 0).toLocaleString()}
-                />
-                <InfoRow
-                  label="Total Supply"
-                  value={(cryptoData.total_supply ?? 0).toLocaleString()}
-                />
-                <InfoRow
-                  label="Max Supply"
-                  value={(cryptoData.max_supply ?? 0).toLocaleString()}
-                />
-              </Box>
-            </div>
-          </div>
-        ) : (
-          // --- Loading Skeleton ---
-          <div className="flex flex-col w-full gap-4">
-            <div className="flex items-center gap-2">
-              <Skeleton variant="circular" width={40} height={40} />
-              <Skeleton variant="text" width={120} height={30} />
-              <Skeleton variant="text" width={60} height={20} />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Skeleton variant="text" width="40%" height={50} />
-              <Skeleton variant="text" width="60%" height={30} />
-            </div>
-
-            <Skeleton variant="rectangular" height={300} />
-
-            <div className="flex flex-col mt-8">
-              <Skeleton variant="text" width="30%" />
-              <Skeleton variant="rectangular" height={200} />
-            </div>
-          </div>
-        )}
-      </Element>
-
-      <Element name="info" className="h-auto py-4" id="info">
-        <Element name="info" className="h-auto py-4" id="info">
-          {cryptoData && !isLoading ? (
-            <div className="flex flex-col w-full">
-              {/* Info Section */}
-              <div className="flex flex-col mt-4">
-                <p className="text-left font-bold">Info</p>
-                <Divider sx={{ marginTop: 1, marginBottom: 1 }} />
-
-                <Box>
-                  <InfoRow
-                    label="Website"
-                    value={createHyperlinkBox(
-                      [
-                        ...(Array.isArray(cryptoData.homepageLink)
-                          ? cryptoData.homepageLink
-                          : [cryptoData.homepageLink]),
-                      ],
-                      "website"
-                    )}
-                  />
-                  <InfoRow
-                    label="Community"
-                    value={createHyperlinkBox(
-                      cryptoData.communityLinks,
-                      "community"
-                    )}
-                  />
-                  <InfoRow
-                    label="Categories"
-                    value={createHyperlinkBox(
-                      cryptoData.categories,
-                      "categories"
-                    )}
-                  />
-                </Box>
-              </div>
-
-              {/* Historical Price Section */}
-              <div className="flex flex-col mt-8">
-                <p className="text-left font-bold">
-                  {cryptoData.symbol.toUpperCase()} Historical Data
-                </p>
-                <Divider sx={{ marginTop: 1, marginBottom: 1 }} />
-
-                <Box>
-                  <InfoRow
-                    label="24h Range"
-                    value={`$${cryptoData.low_24h.toLocaleString()} – $${cryptoData.high_24h.toLocaleString()}`}
-                  />
-                  {cryptoData.low_7d && cryptoData.high_7d && (
-                    <InfoRow
-                      label="7d Range"
-                      value={`$${cryptoData.low_7d.toLocaleString()} – $${cryptoData.high_7d.toLocaleString()}`}
-                    />
-                  )}
-                  <InfoRow
-                    label="All-Time High"
-                    value={
-                      <div className="flex flex-col">
-                        <div className="flex gap-2 justify-end">
-                          <span>${cryptoData.ath.toLocaleString()}</span>
-                          <span
-                            className={
-                              cryptoData.ath_change_percentage < 0
-                                ? "text-red-500"
-                                : "text-green-500"
-                            }
-                          >
-                            {cryptoData.ath_change_percentage < 0 ? (
-                              <ArrowDropDown fontSize="small" />
-                            ) : (
-                              <ArrowDropUp fontSize="small" />
-                            )}
-                            {cryptoData.ath_change_percentage.toFixed(2)}%
-                          </span>
-                        </div>
-                        <span>{convertDate(cryptoData.ath_date)}</span>
-                      </div>
-                    }
-                  />
-                  <InfoRow
-                    label="All-Time Low"
-                    value={
-                      <div className="flex flex-col">
-                        <div className="flex gap-2 justify-end">
-                          <span>${cryptoData.atl.toLocaleString()}</span>
-                          <span
-                            className={
-                              cryptoData.atl_change_percentage < 0
-                                ? "text-red-500"
-                                : "text-green-500"
-                            }
-                          >
-                            {cryptoData.atl_change_percentage < 0 ? (
-                              <ArrowDropDown fontSize="small" />
-                            ) : (
-                              <ArrowDropUp fontSize="small" />
-                            )}
-                            {cryptoData.atl_change_percentage.toFixed(2)}%
-                          </span>
-                        </div>
-                        <span>{convertDate(cryptoData.atl_date)}</span>
-                      </div>
-                    }
-                  />
-                </Box>
-              </div>
-
-              {/* Description Section */}
-              <div className="flex flex-col gap-2 text-left mt-8">
-                <p className="font-bold">
-                  About {cryptoData.name} ({cryptoData.symbol.toUpperCase()})
-                </p>
-                {cryptoData?.description && (
-                  <CoinDescription description={cryptoData.description} />
+                {categoryBadges.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {categoryBadges.map((category) => (
+                      <Badge key={category} variant="primary">
+                        {category}
+                      </Badge>
+                    ))}
+                  </div>
                 )}
               </div>
+            </div>
 
-              {/* RSI Graph Section */}
-              <div className="flex flex-col mt-8">
-                <div className="flex items-center gap-1">
-                  <p className="text-left font-bold">
-                    {cryptoData.symbol.toUpperCase()} RSI
-                  </p>
-                  <Tooltip
-                    title={
-                      <div className="max-w-xs p-2">
-                        <p className="font-semibold">
-                          Relative Strength Index (RSI)
-                        </p>
-                        <p className="text-sm">
-                          RSI is a tool for measuring short-term momentum.
-                          Values above 70 indicate overbought, below 30
-                          oversold.
-                        </p>
-                      </div>
-                    }
-                    arrow
-                    placement="top"
-                    open={tooltipOpen}
-                    onOpen={() => setTooltipOpen(true)}
-                    onClose={() => setTooltipOpen(false)}
-                    disableFocusListener
-                    disableHoverListener
-                    disableTouchListener
-                  >
-                    <HelpOutlineIcon
-                      fontSize="small"
-                      className="text-gray-500 cursor-help hover:text-gray-700"
-                      onClick={() => setTooltipOpen(!tooltipOpen)}
-                    />
-                  </Tooltip>
-                </div>
-                <Divider sx={{ marginTop: 1, marginBottom: 2 }} />
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                  <RSIGraph cryptoId={cryptoData._id} />
-                </div>
+            <div className="flex flex-wrap gap-3">
+              {primaryWebsite && (
+                <a
+                  href={primaryWebsite}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700 hover:border-primary-300 hover:text-primary-600"
+                >
+                  <ExternalLink className="h-4 w-4" /> Official Site
+                </a>
+              )}
+              <Button
+                onClick={handleWatchlistToggle}
+                loading={isTogglingWatchlist}
+                className="flex items-center gap-2"
+              >
+                {inWatchlist ? (
+                  <>
+                    <BookmarkMinus className="h-4 w-4" /> Remove from Watchlist
+                  </>
+                ) : (
+                  <>
+                    <BookmarkPlus className="h-4 w-4" /> Add to Watchlist
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-3">
+              <p className="text-3xl font-bold text-neutral-900">
+                {formatCurrency(cryptoData.current_price)}
+              </p>
+              <div className="flex items-center gap-3">
+                <PriceChange value={percentageChange24h || 0} size="md" />
+                <span className="text-sm text-neutral-500">
+                  {Number.isFinite(priceChange24h)
+                    ? formatCurrency(priceChange24h)
+                    : "—"} {""} change (24h)
+                </span>
               </div>
             </div>
-          ) : (
-            // Loading skeleton
-            <div className="flex flex-col w-full gap-4">
-              <Skeleton variant="text" width="30%" />
-              <Skeleton variant="rectangular" height={300} />
-              <Skeleton variant="text" width="30%" />
-              <Skeleton variant="rectangular" height={300} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl bg-neutral-50 p-4">
+                <p className="text-xs uppercase text-neutral-500">Rank</p>
+                <p className="text-lg font-semibold text-neutral-900">
+                  #{cryptoData.market_cap_rank || "—"}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-neutral-50 p-4">
+                <p className="text-xs uppercase text-neutral-500">Sentiment</p>
+                <p className="text-lg font-semibold text-neutral-900">
+                  {Number.isFinite(cryptoData.sentiment_votes_up_percentage)
+                    ? `${cryptoData.sentiment_votes_up_percentage.toFixed(0)}% positive`
+                    : "N/A"}
+                </p>
+              </div>
             </div>
-          )}
-        </Element>
-      </Element>
+          </div>
+        </Card>
 
-      <Element name="news" className="h-auto py-10" id="news">
-        <h2 className="text-2xl font-bold mb-4 text-left">Related News</h2>
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-neutral-900">
+              {cryptoData.name} Price Chart
+            </h2>
+          </div>
+          <CryptoGraph cryptoId={cryptoId} />
+        </Card>
 
-        {!isLoading ? (
-          news?.length > 0 ? (
-            <div className="flex flex-col gap-4">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+              Key Metrics
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {marketStats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="rounded-xl border border-neutral-100 p-4 bg-white/70"
+                >
+                  <p className="text-xs uppercase text-neutral-500">
+                    {stat.label}
+                  </p>
+                  <p className="mt-1 text-base font-semibold text-neutral-900">
+                    {stat.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+              Price Performance
+            </h2>
+            <div className="space-y-2">
+              {priceRanges.map((range) => (
+                <div key={range.label} className="rounded-xl bg-neutral-50 p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase text-neutral-500">
+                        {range.label}
+                      </p>
+                      <div className="mt-1 text-sm text-neutral-900">
+                        {range.value}
+                      </div>
+                    </div>
+                    {Number.isFinite(range.change) && (
+                      <PriceChange value={range.change} size="sm" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        <Card className="p-6 space-y-4">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex-1 min-w-[240px]">
+              <h2 className="text-lg font-semibold text-neutral-900 mb-2">
+                Official Links
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {websiteLinks.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:border-primary-300 hover:text-primary-600"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    {link.label}
+                  </a>
+                ))}
+                {websiteLinks.length === 0 && (
+                  <span className="text-sm text-neutral-500">N/A</span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-[240px]">
+              <h2 className="text-lg font-semibold text-neutral-900 mb-2">
+                Communities
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {communityLinks.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:border-primary-300 hover:text-primary-600"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    {link.label}
+                  </a>
+                ))}
+                {communityLinks.length === 0 && (
+                  <span className="text-sm text-neutral-500">N/A</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-neutral-900">
+              About {cryptoData.name}
+            </h2>
+          </div>
+          <CoinDescription description={cryptoData.description} />
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-neutral-900">
+              {cryptoData.symbol?.toUpperCase()} RSI Indicator
+            </h2>
+          </div>
+          <div className="rounded-2xl border border-neutral-100 bg-white/70 p-4">
+            <RSIGraph cryptoId={cryptoData.id} />
+          </div>
+        </Card>
+
+        <Card className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-neutral-900">
+              Latest News
+            </h2>
+            <span className="text-xs text-neutral-500">
+              Powered by CryptoChat News Engine
+            </span>
+          </div>
+
+          {isNewsLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-24 w-full" />
+              ))}
+            </div>
+          ) : news.length > 0 ? (
+            <div className="space-y-3">
               {news.map((article) => (
                 <a
                   key={article._id || article.url}
                   href={article.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block bg-white shadow-md rounded-2xl p-4 border border-gray-200 hover:shadow-lg transition cursor-pointer"
+                  className="block rounded-2xl border border-transparent bg-white/60 p-4 transition hover:border-primary-200 hover:shadow-lg"
                 >
-                  <div className="flex gap-2 items-end justify-end mb-2">
-                    <span
-                      className={`text-xs font-medium px-2.5 py-0.5 rounded bg-gray-200 ${getSentimentColor(
-                        article.sentiment_score
-                      )}`}
-                    >
-                      Sentiment: {formatSentimentScore(article.sentiment_score)}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <span className="text-xs font-semibold uppercase text-primary-600">
+                      {article.source || "Unknown Source"}
                     </span>
-                    {article.source && (
-                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                        {article.source}
+                    {article.published_at && (
+                      <span className="text-xs text-neutral-500 flex items-center gap-1">
+                        <Clock3 className="h-3 w-3" />
+                        {new Date(article.published_at).toLocaleDateString()}
                       </span>
                     )}
                   </div>
-
-                  <div className="mb-4 text-left">
-                    <h3 className="text-xl font-semibold text-gray-800 leading-tight mb-2">
-                      {article.title}
-                    </h3>
-                    <p className="text-gray-600 mt-1 leading-tight">
-                      {article.summary}
-                    </p>
-                  </div>
-
+                  <h3 className="text-base font-semibold text-neutral-900">
+                    {article.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-neutral-600 line-clamp-3">
+                    {article.summary}
+                  </p>
                   {article.tickers?.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
+                    <div className="mt-3 flex flex-wrap gap-2">
                       {article.tickers.map((ticker) => (
-                        <span
-                          key={ticker}
-                          className="bg-gray-200 text-gray-800 text-xs font-medium px-2 py-0.5 rounded"
-                        >
+                        <Badge key={ticker} variant="secondary">
                           {ticker}
-                        </span>
+                        </Badge>
                       ))}
-                    </div>
-                  )}
-
-                  {article.published_at && (
-                    <div className="text-xs text-gray-500 text-right mt-2">
-                      {new Date(article.published_at).toLocaleDateString()}
                     </div>
                   )}
                 </a>
               ))}
             </div>
           ) : (
-            <div className="text-center text-gray-500 py-8">
-              No news available.
-            </div>
-          )
-        ) : (
-          <div className="flex flex-col gap-4">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={index} variant="rectangular" height={150} />
-            ))}
-          </div>
-        )}
-      </Element>
+            <p className="text-sm text-neutral-500">
+              No related news articles right now. Check back soon!
+            </p>
+          )}
+        </Card>
+      </div>
     </div>
   );
 };
 
 export default CryptoDetailsPage;
-
-CoinDescription.propTypes = {
-  description: PropTypes.string.isRequired,
-};
-
-InfoRow.propTypes = {
-  label: PropTypes.string.isRequired,
-  value: PropTypes.string.isRequired,
-};

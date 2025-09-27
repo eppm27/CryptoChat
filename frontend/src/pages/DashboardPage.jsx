@@ -102,7 +102,15 @@ const DashboardPage = () => {
           });
         }
 
-        const mappedWatchlist = (userData.watchlist || [])
+        const uniqueWatchlistEntries = [];
+        const seenWatchlistIds = new Set();
+        (userData.watchlist || []).forEach((entry) => {
+          if (!entry?.cryptoId || seenWatchlistIds.has(entry.cryptoId)) return;
+          seenWatchlistIds.add(entry.cryptoId);
+          uniqueWatchlistEntries.push(entry);
+        });
+
+        const mappedWatchlist = uniqueWatchlistEntries
           .map((entry) => {
             const marketInfo = marketMap.get(entry.cryptoId);
             if (!marketInfo) return null;
@@ -120,7 +128,15 @@ const DashboardPage = () => {
           .filter(Boolean)
           .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
 
-        const mappedWallet = (userData.wallet || [])
+        const uniqueWalletEntries = [];
+        const seenWalletIds = new Set();
+        (userData.wallet || []).forEach((entry) => {
+          if (!entry?.cryptoId || seenWalletIds.has(entry.cryptoId)) return;
+          seenWalletIds.add(entry.cryptoId);
+          uniqueWalletEntries.push(entry);
+        });
+
+        const mappedWallet = uniqueWalletEntries
           .map((entry) => {
             const marketInfo = marketMap.get(entry.cryptoId);
             if (!marketInfo) return null;

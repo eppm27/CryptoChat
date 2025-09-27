@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { message } from "antd";
 import {
@@ -8,105 +8,118 @@ import {
   deletePromptFromSaved,
 } from "../services/userAPI";
 import { useNavigate } from "react-router-dom";
+import { Button, Card, Input, PriceChange, Badge } from "./ui";
+import { Trash2, Sparkles, Info, X } from "lucide-react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import GraphColour from "./GraphColour";
 
 const DeleteModal = ({ closeModal, rowData, modalType, onSuccess }) => {
-  const [isEditable, setIsEditable] = useState(false);
-  const [amount, setAmount] = useState(0);
-
   const navigate = useNavigate();
+  const [amount, setAmount] = useState(
+    Number.parseFloat(rowData?.amount ?? rowData?.quantity ?? 0) || 0
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isChatting, setIsChatting] = useState(false);
+
+  const isWatchlist = modalType === "watchlistPage";
+  const isWallet = modalType === "walletPage";
+  const isSaved = modalType === "savedPage";
 
   useEffect(() => {
-    setAmount(rowData.amount);
+    setAmount(Number.parseFloat(rowData?.amount ?? rowData?.quantity ?? 0) || 0);
   }, [rowData]);
 
-  const handleDeleteOrUpdate = () => {
-    if (isEditable) {
-      updateItem();
-    } else {
-      deleteItem();
+  const changeMetrics = useMemo(() => {
+    if (!isWatchlist) return [];
+
+    const metrics = [
+      { key: "change1h", label: "1h" },
+      { key: "change24h", label: "24h" },
+      { key: "change7d", label: "7d" },
+    ];
+
+    return metrics
+      .map(({ key, label }) => {
+        const raw = rowData?.[key];
+        if (!raw) return null;
+        const numeric = Number.parseFloat(String(raw).replace("%", ""));
+        if (!Number.isFinite(numeric)) return null;
+        return { label, raw, numeric };
+      })
+      .filter(Boolean);
+  }, [rowData, isWatchlist]);
+
+  const displayName = rowData?.name || rowData?.prompt || "Selected entry";
+
+  const handleAmountChange = (event) => {
+    setAmount(Number.parseFloat(event.target.value) || 0);
+  };
+
+  const deleteItem = async () => {
+    try {
+      setIsDeleting(true);
+      if (isWatchlist) {
+        await deleteCryptoFromWatchlist(rowData.userWatchlistInfo);
+      } else if (isSaved) {
+        await deletePromptFromSaved(rowData);
+      } else if (isWallet) {
+        await deleteCryptoFromWallet(rowData);
+      }
+      message.success("Entry removed successfully");
+      onSuccess?.();
+      closeModal();
+    } catch (error) {
+      console.error("Error deleting entry:", error);
+      message.error(error.message || "Failed to remove entry");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const updateItem = async () => {
+    if (!isWallet) return;
+
     try {
-      const successMessage = await updateCryptoAmount(rowData, amount);
-      message.success(successMessage);
+      setIsUpdating(true);
+      await updateCryptoAmount(rowData, amount);
+      message.success("Holding updated");
       onSuccess?.();
       closeModal();
     } catch (error) {
-      console.error("Error:", error);
-      message.error(error.message || "Failed to update crypto from wallet");
+      console.error("Error updating holding:", error);
+      message.error(error.message || "Failed to update holding");
+    } finally {
+      setIsUpdating(false);
     }
-  };
-
-  const deleteItem = async () => {
-    if (modalType === "watchlistPage") {
-      try {
-        const successMessage = await deleteCryptoFromWatchlist(
-          rowData.userWatchlistInfo
-        );
-        message.success(successMessage);
-        onSuccess?.();
-        closeModal();
-      } catch (error) {
-        console.error("Error:", error);
-        message.error(
-          error.message || "Failed to delete crypto from watchlist"
-        );
-      }
-    } else if (modalType === "savedPage") {
-      try {
-        const successMessage = await deletePromptFromSaved(rowData);
-        message.success(successMessage);
-        onSuccess?.();
-        closeModal();
-      } catch (error) {
-        console.error("Error:", error);
-        message.error(error.message || "Failed to delete prompt from saved");
-      }
-    } else if (modalType === "walletPage") {
-      try {
-        const successMessage = await deleteCryptoFromWallet(rowData);
-        message.success(successMessage);
-        onSuccess?.();
-        closeModal();
-      } catch (error) {
-        console.error("Error:", error);
-        message.error(error.message || "Failed to delete crypto from wallet");
-      }
-    }
-  };
-
-  const handleAmountChange = (e) => {
-    setAmount(e.target.value);
-  };
-
-  const handleEditClick = () => {
-    setIsEditable(true);
   };
 
   const handleCryptoDetails = () => {
-    navigate(
-      modalType === "watchlistPage"
-        ? `/cryptoDetails/${rowData.userWatchlistInfo.cryptoId}`
-        : `/cryptoDetails/${rowData.cryptoId}`
-    );
+    const cryptoId = isWatchlist
+      ? rowData?.userWatchlistInfo?.cryptoId
+      : rowData?.cryptoId;
+
+    if (cryptoId) {
+      navigate(`/cryptoDetails/${cryptoId}`);
+      closeModal();
+    }
   };
 
   const handleChat = async () => {
     let inputPrompt;
 
-    if (modalType === "watchlistPage") {
+    if (isWatchlist) {
       inputPrompt = `Tell me about watchlist crypto ${rowData.name}`;
-    } else if (modalType === "walletPage") {
+    } else if (isWallet) {
       inputPrompt = `Tell me about wallet crypto ${rowData.name}`;
-    } else if (modalType === "savedPage") {
+    } else if (isSaved) {
       inputPrompt = rowData.prompt;
     }
 
+    if (!inputPrompt) return;
+
     try {
+      setIsChatting(true);
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -117,13 +130,12 @@ const DeleteModal = ({ closeModal, rowData, modalType, onSuccess }) => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create a new chat with the prompt");
+        throw new Error("Failed to create a new chat");
       }
 
       const data = await response.json();
-
-      if (!data.chat || !data.chat._id) {
-        throw new Error("Invalid response structure: Missing chat._id");
+      if (!data.chat?._id) {
+        throw new Error("Unexpected response from chat service");
       }
 
       navigate(`/chat/${data.chat._id}`, {
@@ -144,153 +156,188 @@ const DeleteModal = ({ closeModal, rowData, modalType, onSuccess }) => {
           ],
         },
       });
-    } catch (err) {
-      console.error("Error handling insights button:", err);
+      closeModal();
+    } catch (error) {
+      console.error("Error starting insights chat:", error);
+      message.error(error.message || "Failed to start AI insights");
+    } finally {
+      setIsChatting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50 px-4">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-300 max-w-2xl w-full p-6 relative">
-        {/* Modal Header */}
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold text-gray-800">Details</h2>
-          <button
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-neutral-900/60 backdrop-blur-sm">
+      <Card className="w-full max-w-2xl p-6 space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <Badge variant="danger" className="uppercase text-xs">
+              Manage Entry
+            </Badge>
+            <h2 className="text-2xl font-semibold text-neutral-900">
+              {displayName}
+            </h2>
+            <p className="text-sm text-neutral-500">
+              {isWallet
+                ? "Update the quantity in your wallet or remove this asset entirely."
+                : isWatchlist
+                ? "Review the latest performance before removing it from your watchlist."
+                : "Remove this saved prompt or explore it with AI insights."}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={closeModal}
-            className="text-gray-500 hover:text-gray-700 transition"
+            className="h-9 w-9 p-0 text-neutral-500"
           >
-            ✕
-          </button>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
-        {/* Title */}
-        <h3 className="text-lg font-medium text-gray-700 mb-6">
-          {rowData?.name || rowData.prompt}
-        </h3>
-
-        {/* Watchlist Details */}
-        {modalType === "watchlistPage" && (
-          <div className="flex flex-col gap-3 text-sm text-gray-700 mb-4 text-left ml-6">
-            {/* Show wallet details */}
-            <p>
-              <span className="font-semibold">Symbol:</span>{" "}
-              {rowData.userWatchlistInfo.cryptoSymbol.toUpperCase()}
-            </p>
-
-            <p>
-              <span className="font-semibold">Price:</span> {rowData.price}
-            </p>
-
-            <div>
-              <p className="font-semibold mb-1">Changes:</p>
-              <div className="ml-4 space-y-1">
-                {["change1h", "change24h", "change7d"].map((term) => {
-                  const changeValue = parseFloat(
-                    rowData[term].replace("%", "")
-                  );
-                  const changeColor =
-                    changeValue >= 0 ? "text-green-600" : "text-red-600";
-                  const label =
-                    term === "change1h"
-                      ? "1h"
-                      : term === "change24h"
-                      ? "24h"
-                      : "7d";
-                  return (
-                    <p key={term}>
-                      <span className="font-medium">{label}:</span>{" "}
-                      <span className={changeColor}>{rowData[term]}</span>
-                    </p>
-                  );
-                })}
+        {isWatchlist && (
+          <div className="rounded-2xl border border-neutral-100 bg-white/60 p-4 space-y-4">
+            <div className="flex flex-wrap items-center gap-3 justify-between">
+              <div>
+                <p className="text-xs uppercase text-neutral-500">Current Price</p>
+                <p className="text-lg font-semibold text-neutral-900">
+                  {rowData.price || "—"}
+                </p>
+              </div>
+              <div className="flex gap-4">
+                {changeMetrics.map((metric) => (
+                  <div key={metric.label} className="text-center">
+                    <span className="text-[11px] uppercase text-neutral-400">
+                      {metric.label}
+                    </span>
+                    <div className="mt-1">
+                      <PriceChange value={metric.numeric} size="sm" />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <p>
-              <span className="font-semibold">Market Cap:</span>{" "}
-              {rowData.marketCap}
-            </p>
+            {rowData.marketCap && (
+              <div className="grid grid-cols-2 gap-3 text-sm text-neutral-600">
+                <div>
+                  <p className="text-xs uppercase text-neutral-400">Market Cap</p>
+                  <p className="font-semibold text-neutral-900">
+                    {rowData.marketCap}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase text-neutral-400">Symbol</p>
+                  <p className="font-semibold text-neutral-900">
+                    {rowData.userWatchlistInfo?.cryptoSymbol?.toUpperCase() || "—"}
+                  </p>
+                </div>
+              </div>
+            )}
 
-            <div className="mt-2">
-              <p className="font-semibold mb-1">Last 7 Days:</p>
-              <ResponsiveContainer width="100%" height={120}>
-                <LineChart data={rowData.graphInfo}>
-                  <Line
-                    type="monotone"
-                    dataKey="price"
-                    stroke={GraphColour(rowData.graphInfo)}
-                    dot={false}
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-
-        {/* Wallet Amount Input */}
-        {modalType === "walletPage" && (
-          <div className="flex flex-col gap-3 mb-6">
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-700">
-                Amount:
-              </label>
-              <input
-                type="number"
-                value={amount}
-                onChange={handleAmountChange}
-                disabled={!isEditable}
-                className="p-2 border border-gray-300 rounded-md w-32"
-              />
-              {!isEditable && (
-                <button
-                  onClick={handleEditClick}
-                  className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition"
-                >
-                  Edit
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex justify-between gap-3 mt-6">
-          <button
-            onClick={handleDeleteOrUpdate}
-            className={`px-4 py-2 rounded-md text-white transition ${
-              isEditable
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-red-500 hover:bg-red-600"
-            }`}
-          >
-            {isEditable ? "Update" : "Delete"}
-          </button>
-
-          <div className="flex gap-2">
-            <button
-              onClick={handleChat}
-              className="px-4 py-2 rounded-md bg-yellow-400 hover:bg-yellow-500 text-gray-900 transition"
-            >
-              AI Insights
-            </button>
-
-            {modalType !== "savedPage" && (
-              <button
-                onClick={handleCryptoDetails}
-                className="px-4 py-2 rounded-md bg-green-400 hover:bg-yellow-500 text-gray-900 transition"
-              >
-                Details
-              </button>
+            {Array.isArray(rowData.graphInfo) && rowData.graphInfo.length > 0 && (
+              <div className="h-32">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={rowData.graphInfo}>
+                    <Line
+                      type="monotone"
+                      dataKey="price"
+                      stroke={GraphColour(rowData.graphInfo)}
+                      dot={false}
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
+        )}
+
+        {isWallet && (
+          <div className="rounded-2xl border border-primary-100 bg-primary-50/60 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase text-primary-600">Current Amount</p>
+                <p className="text-lg font-semibold text-neutral-900">
+                  {rowData.amount}
+                </p>
+              </div>
+              <div className="w-32">
+                <Input
+                  type="number"
+                  label="New amount"
+                  value={amount}
+                  onChange={handleAmountChange}
+                  min={0}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-neutral-600">
+              Updating the amount will adjust your wallet holdings but keep the asset.
+            </p>
+          </div>
+        )}
+
+        {isSaved && (
+          <div className="rounded-2xl border border-neutral-100 bg-white/70 p-4 space-y-3">
+            <p className="text-xs uppercase text-neutral-500">Saved Prompt</p>
+            <p className="text-sm text-neutral-700 leading-relaxed">
+              {rowData.prompt}
+            </p>
+          </div>
+        )}
+
+        <div className="flex flex-wrap justify-between gap-3">
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              onClick={closeModal}
+              className="border border-neutral-200"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleChat}
+              loading={isChatting}
+              className="flex items-center gap-2"
+            >
+              <Sparkles className="h-4 w-4" /> AI Insights
+            </Button>
+            {!isSaved && (
+              <Button
+                variant="outline"
+                onClick={handleCryptoDetails}
+                className="flex items-center gap-2"
+              >
+                <Info className="h-4 w-4" /> Details
+              </Button>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            {isWallet && (
+              <Button
+                onClick={updateItem}
+                loading={isUpdating}
+                className="flex items-center gap-2"
+              >
+                Update Holding
+              </Button>
+            )}
+            <Button
+              variant="danger"
+              onClick={deleteItem}
+              loading={isDeleting}
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" /> Remove
+            </Button>
+          </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };
-
-export default DeleteModal;
 
 DeleteModal.propTypes = {
   closeModal: PropTypes.func.isRequired,
@@ -298,3 +345,5 @@ DeleteModal.propTypes = {
   modalType: PropTypes.string.isRequired,
   onSuccess: PropTypes.func.isRequired,
 };
+
+export default DeleteModal;
