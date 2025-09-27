@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { fetchUserData } from "../services/userAPI.jsx";
+import { fetchCryptoDetailsDatabase } from "../services/cryptoAPI.jsx";
 import { Card, Button, Skeleton, PriceChange, Badge } from "../components/ui";
 import { cn } from "../utils/cn";
 import AddModal from "../components/AddModal.jsx";
 
 const WalletPage = () => {
+  const navigate = useNavigate();
   const [walletData, setWalletData] = useState([]);
   const [_userData, setUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -14,15 +17,51 @@ const WalletPage = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    document.title = "My Wallet - CryptoChat";
+
     const loadUserData = async () => {
+      // Set a timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        setIsLoading(false);
+        setError("Request timed out. Please try again.");
+      }, 15000); // 15 seconds timeout
+
       try {
         const user = await fetchUserData();
-        setWalletData(user.wallet || []);
         setUserData(user);
 
-        // Calculate total portfolio value and change
         if (user.wallet && user.wallet.length > 0) {
-          const total = user.wallet.reduce((sum, item) => {
+          // Get current market data for all cryptos in wallet
+          const cryptoIds = user.wallet.map((item) => item.cryptoId);
+          const marketData = await fetchCryptoDetailsDatabase(
+            cryptoIds,
+            "watchlist"
+          );
+
+          // Merge wallet data with current market data
+          const enrichedWalletData = user.wallet.map((walletItem) => {
+            const marketInfo = marketData.find(
+              (crypto) => crypto.id === walletItem.cryptoId
+            );
+
+            return {
+              ...walletItem,
+              // Map the correct field names
+              coin: walletItem.cryptoName,
+              symbol: walletItem.cryptoSymbol,
+              quantity: walletItem.amount,
+              imageUrl: marketInfo?.image,
+              currentPrice: marketInfo?.current_price || 0,
+              change24h: marketInfo?.price_change_percentage_24h || 0,
+              purchasePrice:
+                walletItem.purchasePrice || marketInfo?.current_price || 0,
+            };
+          });
+
+          setWalletData(enrichedWalletData);
+
+          // Calculate total portfolio value and change
+          const total = enrichedWalletData.reduce((sum, item) => {
             return (
               sum +
               parseFloat(item.currentPrice || 0) *
@@ -30,7 +69,7 @@ const WalletPage = () => {
             );
           }, 0);
 
-          const totalChange = user.wallet.reduce((sum, item) => {
+          const totalChange = enrichedWalletData.reduce((sum, item) => {
             const itemValue =
               parseFloat(item.currentPrice || 0) *
               parseFloat(item.quantity || 0);
@@ -40,28 +79,64 @@ const WalletPage = () => {
 
           setTotalValue(total);
           setTotalChange24h(totalChange);
+        } else {
+          setWalletData([]);
         }
       } catch (err) {
         console.error("Error fetching user data:", err);
+        if (err.message.includes("Unauthorized")) {
+          // Redirect to login if not authenticated
+          navigate("/");
+          return;
+        }
         setError(err.message || "Failed to load wallet data");
       } finally {
+        clearTimeout(timeoutId);
         setIsLoading(false);
       }
     };
     loadUserData();
-  }, []);
+  }, [navigate]);
 
   const handleAddSuccess = () => {
-    // Reload user data to refresh wallet
-    const loadUserData = async () => {
+    // Reload user data to refresh wallet using the same logic as initial load
+    const reloadWalletData = async () => {
       try {
         const user = await fetchUserData();
-        setWalletData(user.wallet || []);
         setUserData(user);
 
-        // Recalculate totals
         if (user.wallet && user.wallet.length > 0) {
-          const total = user.wallet.reduce((sum, item) => {
+          // Get current market data for all cryptos in wallet
+          const cryptoIds = user.wallet.map((item) => item.cryptoId);
+          const marketData = await fetchCryptoDetailsDatabase(
+            cryptoIds,
+            "watchlist"
+          );
+
+          // Merge wallet data with current market data
+          const enrichedWalletData = user.wallet.map((walletItem) => {
+            const marketInfo = marketData.find(
+              (crypto) => crypto.id === walletItem.cryptoId
+            );
+
+            return {
+              ...walletItem,
+              // Map the correct field names
+              coin: walletItem.cryptoName,
+              symbol: walletItem.cryptoSymbol,
+              quantity: walletItem.amount,
+              imageUrl: marketInfo?.image,
+              currentPrice: marketInfo?.current_price || 0,
+              change24h: marketInfo?.price_change_percentage_24h || 0,
+              purchasePrice:
+                walletItem.purchasePrice || marketInfo?.current_price || 0,
+            };
+          });
+
+          setWalletData(enrichedWalletData);
+
+          // Calculate total portfolio value and change
+          const total = enrichedWalletData.reduce((sum, item) => {
             return (
               sum +
               parseFloat(item.currentPrice || 0) *
@@ -69,7 +144,7 @@ const WalletPage = () => {
             );
           }, 0);
 
-          const totalChange = user.wallet.reduce((sum, item) => {
+          const totalChange = enrichedWalletData.reduce((sum, item) => {
             const itemValue =
               parseFloat(item.currentPrice || 0) *
               parseFloat(item.quantity || 0);
@@ -79,20 +154,26 @@ const WalletPage = () => {
 
           setTotalValue(total);
           setTotalChange24h(totalChange);
+        } else {
+          setWalletData([]);
         }
       } catch (err) {
         console.error("Error fetching user data:", err);
+        if (err.message.includes("Unauthorized")) {
+          navigate("/");
+          return;
+        }
       }
     };
-    loadUserData();
+    reloadWalletData();
   };
 
   const WalletItem = ({ item }) => {
-    const currentPrice = parseFloat(item.currentPrice || 0);
-    const purchasePrice = parseFloat(
-      item.purchasePrice || item.currentPrice || 0
-    );
-    const quantity = parseFloat(item.quantity || item.amount || 0);
+    // Safely parse numeric values with fallbacks
+    const currentPrice = parseFloat(item.currentPrice) || 0;
+    const purchasePrice =
+      parseFloat(item.purchasePrice || item.currentPrice) || currentPrice || 0;
+    const quantity = parseFloat(item.quantity || item.amount) || 0;
 
     const currentValue = currentPrice * quantity;
     const purchaseValue = purchasePrice * quantity;
@@ -117,10 +198,10 @@ const WalletPage = () => {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-lg text-neutral-900 truncate">
-                {item.coin}
+                {item.coin || item.cryptoName || "Unknown Crypto"}
               </h3>
               <p className="text-sm text-neutral-500 uppercase">
-                {item.symbol}
+                {item.symbol || item.cryptoSymbol || "N/A"}
               </p>
             </div>
             <div className="text-right">
@@ -142,9 +223,9 @@ const WalletPage = () => {
               <p className="text-sm text-neutral-500 mb-1">Current Price</p>
               <p className="font-semibold text-neutral-900">
                 $
-                {parseFloat(item.currentPrice).toLocaleString(undefined, {
+                {currentPrice.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
-                  maximumFractionDigits: item.currentPrice < 1 ? 6 : 2,
+                  maximumFractionDigits: currentPrice < 1 ? 6 : 2,
                 })}
               </p>
             </div>
@@ -165,7 +246,7 @@ const WalletPage = () => {
             <div className="flex items-center gap-4">
               <div className="text-center">
                 <p className="text-xs text-neutral-500 mb-1">24h Change</p>
-                <PriceChange value={item.change24h} size="sm" />
+                <PriceChange value={item.change24h || 0} size="sm" />
               </div>
               <div className="text-center">
                 <p className="text-xs text-neutral-500 mb-1">Total P&L</p>
@@ -433,42 +514,51 @@ const WalletPage = () => {
               <div>
                 <p className="text-sm text-neutral-500 mb-1">Best Performer</p>
                 <p className="font-semibold text-success-600">
-                  {
-                    walletData.reduce((best, current) =>
-                      parseFloat(current.change24h) > parseFloat(best.change24h)
-                        ? current
-                        : best
-                    ).symbol
-                  }
+                  {walletData.length > 0
+                    ? walletData
+                        .reduce((best, current) =>
+                          parseFloat(current.change24h || 0) >
+                          parseFloat(best.change24h || 0)
+                            ? current
+                            : best
+                        )
+                        .symbol?.toUpperCase() || "N/A"
+                    : "N/A"}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-neutral-500 mb-1">Worst Performer</p>
                 <p className="font-semibold text-danger-600">
-                  {
-                    walletData.reduce((worst, current) =>
-                      parseFloat(current.change24h) <
-                      parseFloat(worst.change24h)
-                        ? current
-                        : worst
-                    ).symbol
-                  }
+                  {walletData.length > 0
+                    ? walletData
+                        .reduce((worst, current) =>
+                          parseFloat(current.change24h || 0) <
+                          parseFloat(worst.change24h || 0)
+                            ? current
+                            : worst
+                        )
+                        .symbol?.toUpperCase() || "N/A"
+                    : "N/A"}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-neutral-500 mb-1">Largest Holding</p>
                 <p className="font-semibold text-neutral-900">
-                  {
-                    walletData.reduce((largest, current) => {
-                      const currentValue =
-                        parseFloat(current.currentPrice) *
-                        parseFloat(current.quantity);
-                      const largestValue =
-                        parseFloat(largest.currentPrice) *
-                        parseFloat(largest.quantity);
-                      return currentValue > largestValue ? current : largest;
-                    }).symbol
-                  }
+                  {walletData.length > 0
+                    ? walletData
+                        .reduce((largest, current) => {
+                          const currentValue =
+                            parseFloat(current.currentPrice || 0) *
+                            parseFloat(current.quantity || 0);
+                          const largestValue =
+                            parseFloat(largest.currentPrice || 0) *
+                            parseFloat(largest.quantity || 0);
+                          return currentValue > largestValue
+                            ? current
+                            : largest;
+                        })
+                        .symbol?.toUpperCase() || "N/A"
+                    : "N/A"}
                 </p>
               </div>
               <div>

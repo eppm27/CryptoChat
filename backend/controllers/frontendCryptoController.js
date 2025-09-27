@@ -50,12 +50,16 @@ const getCryptoDetailsDatabase = async (req, res) => {
     let { cryptos = [], type = "default" } = req.query;
     
     // Handle different ways axios might serialize the array
-    if (typeof cryptos === 'string') {
+    if (typeof cryptos === "string") {
       try {
-        cryptos = JSON.parse(cryptos);
+        const parsed = JSON.parse(cryptos);
+        cryptos = parsed;
       } catch (parseError) {
-        // If JSON parsing fails, might be a different serialization
-        cryptos = [];
+        // Accept simple comma separated lists as a fallback
+        cryptos = cryptos
+          .split(",")
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0);
       }
     }
     
@@ -79,10 +83,19 @@ const getCryptoDetailsDatabase = async (req, res) => {
     let cryptoData;
 
     if (type === "watchlist") {
-      if (!Array.isArray(cryptos)) {
-        cryptos = [];
-      }
-      const watchlistIds = cryptos.map((item) => item.cryptoId);
+      const toId = (item) => {
+        if (!item) return null;
+        if (typeof item === "string") return item;
+        if (typeof item === "object") {
+          return item.cryptoId || item.id || item._id || null;
+        }
+        return null;
+      };
+
+      const watchlistIds = Array.isArray(cryptos)
+        ? cryptos.map(toId).filter(Boolean)
+        : [];
+
       cryptoData = allCryptos.filter((crypto) =>
         watchlistIds.includes(crypto.id)
       );

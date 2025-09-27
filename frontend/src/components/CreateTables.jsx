@@ -763,11 +763,10 @@ function rowContent(
                 inputTableType === "watchlist") &&
                 userData?.wallet?.some(
                   (walletItem) =>
-                    walletItem.cryptoId === row.userWatchlistInfo.cryptoId
+                    walletItem.cryptoId === row.userWatchlistInfo?.cryptoId
                 ) && (
                   <Badge variant="secondary" className="text-xs">
                     <Wallet className="w-3 h-3 mr-1" />
-                    In Wallet
                   </Badge>
                 )}
             </div>
