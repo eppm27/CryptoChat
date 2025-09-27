@@ -143,6 +143,7 @@ const SavedPage = () => {
             closeModal={closeModal}
             onSuccess={handleAddedSuccessfully}
             modalType="savedPrompts"
+            userData={userData}
           />
         )}
       </div>

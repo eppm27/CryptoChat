@@ -94,7 +94,9 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
   };
 
   const handleSave = async () => {
-    if (!userData) {
+    // Allow saving prompts even if userData hasn't loaded yet.
+    // Only require userData for wallet/watchlist actions.
+    if ((modalType === "wallet" || modalType === "watchlist") && !userData) {
       message.error(
         "User data is still loading. Please try again in a moment."
       );
@@ -161,7 +163,9 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
           return;
         }
 
-        const promptExists = savedPrompts.some(
+        // Use a safe fallback for savedPrompts in case userData isn't loaded yet
+        const existingSavedPrompts = userData?.savedPrompts ?? [];
+        const promptExists = existingSavedPrompts.some(
           (entry) =>
             entry?.prompt?.toLowerCase() === savePrompt.trim().toLowerCase()
         );
