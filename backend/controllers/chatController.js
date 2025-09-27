@@ -12,18 +12,19 @@ const createChat = async (req, res) => {
     }
 
     const { content } = req.body;
+    const trimmedContent =
+      typeof content === "string" ? content.trim() : "";
 
-    const trimmedTitle = content
-      ? content.length > 50
-        ? content.slice(0, 50).trim() + "..."
-        : content.trim()
-      : "Untitled Chat";
+    const trimmedTitle = trimmedContent
+      ? trimmedContent.length > 50
+        ? trimmedContent.slice(0, 50).trim() + "..."
+        : trimmedContent
+      : "New Chat";
 
-    // Include lastMessage on creation
     const chat = new Chat({
       user: req.user._id,
       title: trimmedTitle,
-      lastMessage: content || "New chat started",
+      lastMessage: trimmedContent,
     });
 
     await chat.save();
@@ -53,6 +54,8 @@ const addMessage = async (req, res) => {
     }
 
     const { content } = req.body;
+    const trimmedContent =
+      typeof content === "string" ? content.trim() : "";
 
     // Set up SSE headers
     res.writeHead(200, {
@@ -140,16 +143,16 @@ const addMessage = async (req, res) => {
 
     if (messageCount === 1) {
       // First user message
-      const title = await generateChatTitle(content);
+      const title = await generateChatTitle(trimmedContent || content);
       await Chat.findByIdAndUpdate(req.params.chatId, {
         title,
-        lastMessage: content,
+        lastMessage: trimmedContent || content,
         updatedAt: Date.now(),
       });
     } else {
       // Update last message only
       await Chat.findByIdAndUpdate(req.params.chatId, {
-        lastMessage: content,
+        lastMessage: trimmedContent || content,
         updatedAt: Date.now(),
       });
     }
@@ -195,7 +198,7 @@ const addMessage = async (req, res) => {
     });
 
     // update chat with last message
-    chat.lastMessage = content;
+    chat.lastMessage = trimmedContent || content;
     chat.updatedAt = Date.now();
     await chat.save();
 
@@ -512,7 +515,10 @@ const getAllChats = async (req, res) => {
       return res.status(400).json({ error: "User ID not found in request" });
     }
 
-    const chats = await Chat.find({ user: req.user._id })
+    const chats = await Chat.find({
+      user: req.user._id,
+      lastMessage: { $nin: [null, "", "New chat started"] },
+    })
       .sort({ updatedAt: -1 })
       .select("title lastMessage updatedAt");
 

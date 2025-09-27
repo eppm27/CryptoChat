@@ -10,8 +10,6 @@ import {
 import { useNavigate } from "react-router-dom";
 import { Button, Card, Input, PriceChange, Badge } from "./ui";
 import { Trash2, Sparkles, Info, X } from "lucide-react";
-import { LineChart, Line, ResponsiveContainer } from "recharts";
-import GraphColour from "./GraphColour";
 
 const DeleteModal = ({ closeModal, rowData, modalType, onSuccess }) => {
   const navigate = useNavigate();
@@ -195,60 +193,51 @@ const DeleteModal = ({ closeModal, rowData, modalType, onSuccess }) => {
         </div>
 
         {isWatchlist && (
-          <div className="rounded-2xl border border-neutral-100 bg-white/60 p-4 space-y-4">
+          <div className="rounded-2xl border border-neutral-100 bg-white/70 p-4 space-y-4">
             <div className="flex flex-wrap items-center gap-3 justify-between">
               <div>
-                <p className="text-xs uppercase text-neutral-500">Current Price</p>
+                <p className="text-xs uppercase text-neutral-500">Spot Price</p>
                 <p className="text-lg font-semibold text-neutral-900">
                   {rowData.price || "—"}
                 </p>
               </div>
-              <div className="flex gap-4">
-                {changeMetrics.map((metric) => (
-                  <div key={metric.label} className="text-center">
-                    <span className="text-[11px] uppercase text-neutral-400">
-                      {metric.label}
-                    </span>
-                    <div className="mt-1">
-                      <PriceChange value={metric.numeric} size="sm" />
+              {changeMetrics.length > 0 && (
+                <div className="flex gap-4">
+                  {changeMetrics.map((metric) => (
+                    <div key={metric.label} className="text-center">
+                      <span className="text-[11px] uppercase text-neutral-400">
+                        {metric.label}
+                      </span>
+                      <div className="mt-1">
+                        <PriceChange value={metric.numeric} size="sm" />
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {rowData.marketCap && (
-              <div className="grid grid-cols-2 gap-3 text-sm text-neutral-600">
+            <div className="grid grid-cols-2 gap-3 text-sm text-neutral-600">
+              <div>
+                <p className="text-xs uppercase text-neutral-400">Symbol</p>
+                <p className="font-semibold text-neutral-900">
+                  {rowData.userWatchlistInfo?.cryptoSymbol?.toUpperCase() || "—"}
+                </p>
+              </div>
+              {rowData.marketCap && (
                 <div>
                   <p className="text-xs uppercase text-neutral-400">Market Cap</p>
                   <p className="font-semibold text-neutral-900">
                     {rowData.marketCap}
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs uppercase text-neutral-400">Symbol</p>
-                  <p className="font-semibold text-neutral-900">
-                    {rowData.userWatchlistInfo?.cryptoSymbol?.toUpperCase() || "—"}
-                  </p>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {Array.isArray(rowData.graphInfo) && rowData.graphInfo.length > 0 && (
-              <div className="h-32">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={rowData.graphInfo}>
-                    <Line
-                      type="monotone"
-                      dataKey="price"
-                      stroke={GraphColour(rowData.graphInfo)}
-                      dot={false}
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+            <p className="text-xs text-neutral-500">
+              Keep this asset on your watchlist to monitor price swings and
+              market momentum.
+            </p>
           </div>
         )}
 
@@ -279,22 +268,33 @@ const DeleteModal = ({ closeModal, rowData, modalType, onSuccess }) => {
 
         {isSaved && (
           <div className="rounded-2xl border border-neutral-100 bg-white/70 p-4 space-y-3">
-            <p className="text-xs uppercase text-neutral-500">Saved Prompt</p>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="uppercase text-[11px]">
+                Saved Insight
+              </Badge>
+              <span className="text-xs text-neutral-400">
+                Keep a note of ideas worth revisiting.
+              </span>
+            </div>
             <p className="text-sm text-neutral-700 leading-relaxed">
               {rowData.prompt}
+            </p>
+            <p className="text-xs text-neutral-500">
+              Launch AI Insights to explore this idea again or remove it to keep
+              your workspace tidy.
             </p>
           </div>
         )}
 
-        <div className="flex flex-wrap justify-between gap-3">
-          <div className="flex gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
               onClick={handleChat}
               loading={isChatting}
               className="flex items-center gap-2"
             >
-              <Sparkles className="h-4 w-4" /> CryptoGPT
+              <Sparkles className="h-4 w-4" /> AI Insights
             </Button>
             {!isSaved && (
               <Button
@@ -302,12 +302,12 @@ const DeleteModal = ({ closeModal, rowData, modalType, onSuccess }) => {
                 onClick={handleCryptoDetails}
                 className="flex items-center gap-2"
               >
-                <Info className="h-4 w-4" /> Details
+                <Info className="h-4 w-4" /> View Details
               </Button>
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 sm:justify-end">
             {isWallet && (
               <Button
                 onClick={updateItem}

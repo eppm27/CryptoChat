@@ -1,30 +1,113 @@
-import React, { useState, useEffect } from "react";
-import { Card, Skeleton, Badge } from "../components/ui";
+import React, { useState, useEffect, useCallback } from "react";
+import { Card, Skeleton, Badge, Button } from "../components/ui";
 import { cn } from "../utils/cn";
+
+const PAGE_SIZE = 10;
 
 const NewsPage = () => {
   const [newsList, setNewsList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
-  useEffect(() => {
-    const fetchNews = async () => {
+  const mergeArticles = useCallback((existing, incoming) => {
+    const existingMap = new Map();
+    existing.forEach((article) => {
+      const key = article._id || article.url;
+      if (key) {
+        existingMap.set(key, article);
+      }
+    });
+
+    incoming.forEach((article) => {
+      const key = article._id || article.url;
+      if (key && !existingMap.has(key)) {
+        existingMap.set(key, article);
+      }
+    });
+
+    return Array.from(existingMap.values()).sort((a, b) => {
+      const dateA = new Date(
+        a.published_at || a.publishedAt || a.createdAt || 0
+      ).getTime();
+      const dateB = new Date(
+        b.published_at || b.publishedAt || b.createdAt || 0
+      ).getTime();
+      return dateB - dateA;
+    });
+  }, []);
+
+  const fetchNews = useCallback(
+    async ({ page: pageToFetch = 0, isInitial = false } = {}) => {
+      if (isInitial) {
+        setLoading(true);
+        setError(null);
+      } else {
+        setIsLoadingMore(true);
+      }
+
       try {
-        const response = await fetch("/api/news");
+        const params = new URLSearchParams({
+          limit: PAGE_SIZE.toString(),
+          offset: (pageToFetch * PAGE_SIZE).toString(),
+        });
+
+        const response = await fetch(`/api/news?${params.toString()}`);
         if (!response.ok) {
           throw new Error("Failed to fetch news");
         }
         const data = await response.json();
-        setNewsList(data);
+
+        setNewsList((prev) =>
+          mergeArticles(pageToFetch === 0 ? [] : prev, data)
+        );
+        setHasMore(data.length === PAGE_SIZE);
+
+        if (pageToFetch === 0) {
+          setPage(0);
+        } else {
+          setPage(pageToFetch);
+        }
+
+        return data.length;
       } catch (err) {
-        setError(err.message);
+        if (isInitial) {
+          setError(err.message);
+        } else {
+          console.error("Load more news failed:", err);
+        }
+        return null;
       } finally {
-        setLoading(false);
+        if (isInitial) {
+          setLoading(false);
+        } else {
+          setIsLoadingMore(false);
+        }
       }
-    };
-    fetchNews();
-  }, []);
+    },
+    [mergeArticles]
+  );
+
+  useEffect(() => {
+    fetchNews({ page: 0, isInitial: true });
+  }, [fetchNews]);
+
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMore) {
+      return;
+    }
+    const nextPage = page + 1;
+    const result = await fetchNews({ page: nextPage });
+    if (result === null) {
+      return;
+    }
+    if (result < PAGE_SIZE) {
+      setHasMore(false);
+    }
+  };
 
   const categories = [
     "all",
@@ -80,9 +163,11 @@ const NewsPage = () => {
                 {article.source}
               </Badge>
             )}
-            {article._id && (
+            {(article.published_at || article.publishedAt || article.createdAt) && (
               <span className="text-xs text-neutral-500">
-                {formatTimeAgo(article.publishedAt || article.createdAt)}
+                {formatTimeAgo(
+                  article.published_at || article.publishedAt || article.createdAt
+                )}
               </span>
             )}
           </div>
@@ -323,11 +408,15 @@ const NewsPage = () => {
         )}
 
         {/* Load More */}
-        {!loading && !error && filteredNews.length > 0 && (
+        {!loading && !error && filteredNews.length > 0 && hasMore && (
           <div className="mt-8 text-center">
-            <button className="px-6 py-3 bg-white border border-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors font-medium">
+            <Button
+              variant="outline"
+              onClick={handleLoadMore}
+              loading={isLoadingMore}
+            >
               Load More Articles
-            </button>
+            </Button>
           </div>
         )}
       </div>
