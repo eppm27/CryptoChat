@@ -18,6 +18,7 @@ const ChatPage = () => {
   const chatContainerRef = useRef(null);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [, setError] = useState(null);
   const [showPrompts, setShowPrompts] = useState(false);
   const location = useLocation();
@@ -129,7 +130,8 @@ const ChatPage = () => {
           const messagesWithIds = chatData.messages.map((msg) => ({
             ...msg,
             id: msg._id || msg.id || generateMessageId(),
-            timestamp: msg.createdAt || msg.timestamp || new Date().toISOString(),
+            timestamp:
+              msg.createdAt || msg.timestamp || new Date().toISOString(),
           }));
           setMessages(messagesWithIds);
           hasUserSentMessage.current = true;
@@ -208,6 +210,9 @@ const ChatPage = () => {
 
         setMessages((prev) => [...prev, botMessage]);
 
+        // Set streaming to true to indicate we're now receiving content
+        setIsStreaming(true);
+
         // Throttle updates to reduce flickering during streaming
         let updateTimeout = null;
         const updateBotMessage = () => {
@@ -244,7 +249,10 @@ const ChatPage = () => {
                   if (updateTimeout) clearTimeout(updateTimeout);
                   updateTimeout = setTimeout(updateBotMessage, 50);
                 } else if (data.type === "visualization") {
-                  console.log("📊 Received visualization event:", data.visualization);
+                  console.log(
+                    "📊 Received visualization event:",
+                    data.visualization
+                  );
                   botMessage.visualization = data.visualization;
                   // Update immediately for visualization
                   updateBotMessage();
@@ -255,16 +263,26 @@ const ChatPage = () => {
                     botMessage = {
                       ...botMessage,
                       id: data.llmMessage._id || botMessage.id,
-                      content: data.llmMessage.content || data.llmMessage.text || botMessage.content,
-                      visualization: data.llmMessage.visualization || botMessage.visualization,
-                      timestamp: data.llmMessage.createdAt || botMessage.timestamp,
-                      isVisualization: data.llmMessage.isVisualization || (botMessage.visualization != null),
+                      content:
+                        data.llmMessage.content ||
+                        data.llmMessage.text ||
+                        botMessage.content,
+                      visualization:
+                        data.llmMessage.visualization ||
+                        botMessage.visualization,
+                      timestamp:
+                        data.llmMessage.createdAt || botMessage.timestamp,
+                      isVisualization:
+                        data.llmMessage.isVisualization ||
+                        botMessage.visualization != null,
                     };
                   } else {
                     botMessage.content = data.text || botMessage.content;
                   }
                   if (updateTimeout) clearTimeout(updateTimeout);
                   updateBotMessage();
+                  // Mark streaming as complete
+                  setIsStreaming(false);
                 } else if (data.type === "start") {
                   // Initial message from backend - no action needed
                   console.log("LLM processing started");
@@ -289,6 +307,7 @@ const ChatPage = () => {
         ]);
       } finally {
         setIsLoading(false);
+        setIsStreaming(false);
       }
     },
     [input, isLoading, currentChatId]
@@ -385,12 +404,12 @@ const ChatPage = () => {
 
           {message.visualization && (
             <div className="mt-4 rounded-xl overflow-hidden">
-              <ChatChart 
+              <ChatChart
                 visualization={
-                  Array.isArray(message.visualization) 
-                    ? message.visualization[0] 
+                  Array.isArray(message.visualization)
+                    ? message.visualization[0]
                     : message.visualization
-                } 
+                }
               />
             </div>
           )}
@@ -401,7 +420,9 @@ const ChatPage = () => {
               isUser ? "text-right text-primary-100" : "text-neutral-500"
             )}
           >
-            {new Date(message.timestamp || message.createdAt || new Date()).toLocaleTimeString([], {
+            {new Date(
+              message.timestamp || message.createdAt || new Date()
+            ).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             })}
@@ -494,7 +515,7 @@ const ChatPage = () => {
           ))
         )}
 
-        {isLoading && messages.length > 0 && (
+        {isLoading && messages.length > 0 && !isStreaming && (
           <div className="flex justify-start">
             <div className="max-w-[70%] bg-white border border-neutral-200 rounded-2xl px-4 py-3 shadow-sm">
               <div className="flex items-center space-x-2 mb-2">
