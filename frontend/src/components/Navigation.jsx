@@ -258,9 +258,13 @@ const DesktopHeader = () => {
     <header className="hidden md:block fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-neutral-200/50 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
+          {/* Logo (use favicon image) */}
           <Link to="/dashboard" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-xl"></div>
+            <img
+              src="/image.png"
+              alt="CryptoChat"
+              className="w-8 h-8 rounded-xl object-contain"
+            />
             <span className="text-xl font-bold text-neutral-900">
               CryptoChat
             </span>
@@ -299,7 +303,11 @@ const DesktopHeader = () => {
               to="/profile"
               className="flex items-center space-x-2 p-2 rounded-xl hover:bg-neutral-50 transition-colors"
             >
-              <div className="w-8 h-8 bg-gradient-to-r from-primary-400 to-secondary-400 rounded-full"></div>
+              <img
+                src="/image.png"
+                alt="Profile"
+                className="w-8 h-8 rounded-full object-contain"
+              />
             </Link>
 
             {/* Mobile menu button */}
