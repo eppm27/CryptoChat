@@ -84,7 +84,8 @@ const MicIcon = () => (
 );
 
 // MessageBubble component - moved outside to prevent recreation
-const MessageBubble = React.memo(({ message, onSavePrompt }) => {
+const MessageBubble = React.memo(
+  ({ message, onSavePrompt, isStreaming, isThinking }) => {
   const isUser = message.role === "user";
   const isBot = message.role === "chatBot";
 
@@ -136,7 +137,30 @@ const MessageBubble = React.memo(({ message, onSavePrompt }) => {
             message.isError ? "text-danger-600" : ""
           )}
         >
-          <ReactMarkdown>{message.content}</ReactMarkdown>
+          {message.content ? (
+            <ReactMarkdown>{message.content}</ReactMarkdown>
+          ) : isBot && isThinking ? (
+            <div className="flex items-center space-x-2 text-sm text-neutral-500">
+              <div className="flex space-x-1">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="w-2.5 h-2.5 bg-primary-500 rounded-full animate-bounce"
+                    style={{
+                      animationDelay: `${i * 0.15}s`,
+                      animationDuration: "1s",
+                    }}
+                  />
+                ))}
+              </div>
+              <span>Thinking...</span>
+            </div>
+          ) : null}
+          {isStreaming && isBot && (
+            <span className="inline-flex items-center ml-1">
+              <div className="w-1 h-4 bg-primary-500 animate-pulse" />
+            </span>
+          )}
         </div>
 
         {message.visualization && (
@@ -172,6 +196,12 @@ const ChatPage = () => {
   const [currentChatId, setCurrentChatId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [activeBotMessageId, setActiveBotMessageId] = useState(null);
+
+  // Debug state changes
+  useEffect(() => {
+    console.log("🔄 State change - isLoading:", isLoading, "isStreaming:", isStreaming);
+  }, [isLoading, isStreaming]);
   const [, setError] = useState(null);
   const [showPrompts, setShowPrompts] = useState(false);
   const location = useLocation();
@@ -274,6 +304,13 @@ const ChatPage = () => {
       setIsLoading(true);
       hasUserSentMessage.current = true;
 
+      // Brief delay to ensure thinking bubble shows smoothly
+      setTimeout(() => {
+        if (isLoading) {
+          // Ensure UI updates to show thinking bubble
+        }
+      }, 100);
+
       try {
         const response = await fetch(`/api/chat/${currentChatId}/messages`, {
           method: "POST",
@@ -287,6 +324,7 @@ const ChatPage = () => {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         const botMessageId = generateMessageId();
+        setActiveBotMessageId(botMessageId);
         let botMessage = {
           id: botMessageId,
           content: "",
@@ -298,17 +336,19 @@ const ChatPage = () => {
 
         setMessages((prev) => [...prev, botMessage]);
 
-        // Set streaming to true to indicate we're now receiving content
-        setIsStreaming(true);
+        // Note: setIsStreaming(true) will be called when we receive first content
+        // This allows the thinking bubble to show while waiting for first response
 
         // Throttle updates to reduce flickering during streaming
         let updateTimeout = null;
         const updateBotMessage = () => {
           setMessages((prev) => {
             const updated = [...prev];
-            const lastIndex = updated.length - 1;
-            if (updated[lastIndex]?.id === botMessageId) {
-              updated[lastIndex] = { ...botMessage };
+            const targetIndex = updated.findIndex(
+              (msg) => msg.id === botMessageId || msg.id === botMessage.id
+            );
+            if (targetIndex !== -1) {
+              updated[targetIndex] = { ...botMessage };
             }
             return updated;
           });
@@ -332,10 +372,13 @@ const ChatPage = () => {
                 const data = JSON.parse(line.slice(6));
 
                 if (data.type === "content") {
+                  console.log("📝 Received content chunk:", data.content);
                   botMessage.content += data.content;
-                  // Throttle content updates to reduce flickering
+                  // Set streaming to true on first content to hide thinking bubble
+                  setIsStreaming(true);
+                  // Throttle content updates with smoother timing
                   if (updateTimeout) clearTimeout(updateTimeout);
-                  updateTimeout = setTimeout(updateBotMessage, 50);
+                  updateTimeout = setTimeout(updateBotMessage, 25);
                 } else if (data.type === "visualization") {
                   console.log(
                     "📊 Received visualization event:",
@@ -345,6 +388,7 @@ const ChatPage = () => {
                   // Update immediately for visualization
                   updateBotMessage();
                 } else if (data.type === "complete") {
+                  console.log("✅ Received complete event:", data);
                   // Handle the final complete message from backend
                   // Update with the complete message data from database
                   if (data.llmMessage) {
@@ -370,7 +414,9 @@ const ChatPage = () => {
                   if (updateTimeout) clearTimeout(updateTimeout);
                   updateBotMessage();
                   // Mark streaming as complete
+                  console.log("🏁 Setting streaming to false");
                   setIsStreaming(false);
+                  setActiveBotMessageId(null);
                 } else if (data.type === "start") {
                   // Initial message from backend - no action needed
                   console.log("LLM processing started");
@@ -383,6 +429,8 @@ const ChatPage = () => {
         }
       } catch (error) {
         console.error("Error sending message:", error);
+        console.log("🚨 Setting loading and streaming to false due to error");
+        setActiveBotMessageId(null);
         setMessages((prev) => [
           ...prev,
           {
@@ -394,8 +442,10 @@ const ChatPage = () => {
           },
         ]);
       } finally {
+        console.log("🔄 Finally block: setting loading and streaming to false");
         setIsLoading(false);
         setIsStreaming(false);
+        setActiveBotMessageId(null);
       }
     },
     [input, isLoading, currentChatId]
@@ -515,40 +565,19 @@ const ChatPage = () => {
             ))}
           </div>
         ) : (
-          messages.map((message) => (
-            <MessageBubble
-              key={message.id || message.timestamp}
-              message={message}
-              onSavePrompt={handleSavePrompt}
-            />
-          ))
-        )}
-
-        {isLoading && messages.length > 0 && !isStreaming && (
-          <div className="flex justify-start">
-            <div className="max-w-[70%] bg-white border border-neutral-200 rounded-2xl px-4 py-3 shadow-sm">
-              <div className="flex items-center space-x-2 mb-2">
-                <div className="w-6 h-6 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
-                  <SparklesIcon />
-                </div>
-                <span className="text-sm font-medium text-neutral-600">
-                  CryptoGPT
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="flex space-x-1">
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className="w-2 h-2 bg-primary-400 rounded-full animate-bounce"
-                      style={{ animationDelay: `${i * 0.1}s` }}
-                    />
-                  ))}
-                </div>
-                <span className="text-sm text-neutral-500">Thinking...</span>
-              </div>
-            </div>
-          </div>
+          messages.map((message) => {
+            const isActiveBotMessage =
+              activeBotMessageId && message.id === activeBotMessageId;
+            return (
+              <MessageBubble
+                key={message.id || message.timestamp}
+                message={message}
+                onSavePrompt={handleSavePrompt}
+                isStreaming={Boolean(isActiveBotMessage && isStreaming)}
+                isThinking={Boolean(isActiveBotMessage && isLoading)}
+              />
+            );
+          })
         )}
       </div>
 
