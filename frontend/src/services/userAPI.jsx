@@ -79,6 +79,9 @@ export const addCryptoToWallet = async (selectedCrypto, cryptoAmount) => {
         cryptoSymbol: selectedCrypto.symbol,
         cryptoId: selectedCrypto.id,
         amount: parseFloat(cryptoAmount),
+        purchasePrice: selectedCrypto.purchasePrice || selectedCrypto.current_price,
+        purchaseDate: selectedCrypto.purchaseDate || new Date().toISOString(),
+        imageUrl: selectedCrypto.image || null,
       }),
     });
 

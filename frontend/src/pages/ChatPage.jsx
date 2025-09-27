@@ -15,7 +15,7 @@ import {
 import { message } from "antd";
 import ChatChart from "../components/ChatChart";
 import promptList from "../components/PromptList";
-import { Button, Card, Skeleton, BottomSheet } from "../ui/index";
+import { Button, Card, Skeleton, BottomSheet } from "../components/ui/index";
 import { cn } from "../utils/cn";
 
 // Icons - moved outside component to prevent recreation

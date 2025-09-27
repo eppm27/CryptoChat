@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import CreateTables from "../components/CreateTables.jsx";
 import AddModal from "../components/AddModal.jsx";
 import { fetchUserData } from "../services/userAPI.jsx";
-import { Card, Button, Skeleton, Badge } from "../ui/index";
+import { Card, Button, Skeleton, Badge } from "../components/ui/index";
 
 const WatchlistPage = () => {
   const [openModal, setOpenModal] = useState(false);

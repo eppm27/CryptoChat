@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { registerUser } from "../services/userAPI";
-import { Button, Input, GlassCard } from "../ui/index";
+import { Button, Input, GlassCard } from "../components/ui/index";
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({

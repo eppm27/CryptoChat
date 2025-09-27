@@ -4,7 +4,7 @@ import CreateTables from "../components/CreateTables.jsx";
 import CreateQuickStartPrompts from "../components/QuickStartPrompts.jsx";
 import { fetchUserData } from "../services/userAPI.jsx";
 import NewsPreview from "../components/NewsPreview";
-import { Button, Card, Skeleton, GlassCard } from "../ui/index";
+import { Button, Card, Skeleton, GlassCard } from "../components/ui/index";
 
 const DashboardPage = () => {
   const navigate = useNavigate();

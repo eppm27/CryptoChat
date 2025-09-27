@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DefaultImage from "../assets/default-pfp.png";
 import { logoutUser, fetchUserData } from "../services/userAPI";
-import { Card, Button, Skeleton, Badge } from "../ui";
+import { Card, Button, Skeleton, Badge } from "../components/ui";
 import { cn } from "../utils/cn";
 
 const ProfilePage = () => {

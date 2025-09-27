@@ -18,7 +18,7 @@ import { ArrowDropUp, ArrowDropDown, MoreVert } from "@mui/icons-material";
 import { message } from "antd";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import GraphColour from "./GraphColour";
-import { Card, PriceChange, Badge, Button, BottomSheet } from "../ui/index";
+import { Card, PriceChange, Badge, Button, BottomSheet } from "../components/ui/index";
 
 const watchlistPageColumns = [
   { label: "Name", dataKey: "name", width: 150 },

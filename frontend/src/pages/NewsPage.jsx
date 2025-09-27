@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, Skeleton, Badge } from "../ui";
+import { Card, Skeleton, Badge } from "../components/ui";
 import { cn } from "../utils/cn";
 
 const NewsPage = () => {

@@ -6,18 +6,32 @@ const addCryptoToWallet = async (req, res) => {
     if (!req.user._id) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const { cryptoName, cryptoSymbol, cryptoId, amount } = req.body;
+    const {
+      cryptoName,
+      cryptoSymbol,
+      cryptoId,
+      amount,
+      purchasePrice,
+      purchaseDate,
+      imageUrl,
+    } = req.body;
+
+    const walletEntry = {
+      cryptoName,
+      cryptoSymbol,
+      cryptoId,
+      amount,
+      purchasePrice: purchasePrice || null,
+      purchaseDate: purchaseDate || new Date(),
+      imageUrl: imageUrl || null,
+      addedAt: new Date(),
+    };
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
       {
         $push: {
-          wallet: {
-            cryptoName,
-            cryptoSymbol,
-            cryptoId,
-            amount,
-          },
+          wallet: walletEntry,
         },
       },
       { new: true }

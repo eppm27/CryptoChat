@@ -1,7 +1,7 @@
 // Define Schema for users
-const mongoose = require('mongoose');
-const { userDB } = require('../config/db');
-const bcrypt = require('bcryptjs');
+const mongoose = require("mongoose");
+const { userDB } = require("../config/db");
+const bcrypt = require("bcryptjs");
 
 const cryptoBaseSchema = new mongoose.Schema({
   cryptoName: { type: String, required: true },
@@ -12,6 +12,10 @@ const cryptoBaseSchema = new mongoose.Schema({
 const walletSchema = new mongoose.Schema({
   ...cryptoBaseSchema.obj,
   amount: { type: Number, required: true },
+  purchasePrice: { type: Number, default: null },
+  purchaseDate: { type: Date, default: Date.now },
+  imageUrl: { type: String, default: null },
+  addedAt: { type: Date, default: Date.now },
 });
 
 const watchlistSchema = new mongoose.Schema({
@@ -41,7 +45,7 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpires: Date,
   pfp: {
     type: String,
-    default: '',
+    default: "",
   },
   wallet: {
     type: [walletSchema],
@@ -73,9 +77,9 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password
-userSchema.pre('save', async function (next) {
+userSchema.pre("save", async function (next) {
   // Only run this if the password was modified
-  if (!this.isModified('password')) return next();
+  if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
@@ -85,4 +89,4 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-module.exports = userDB.model('User', userSchema);
+module.exports = userDB.model("User", userSchema);

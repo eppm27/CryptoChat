@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../utils/cn';
-import { Button } from '../ui/index';
+import { Button } from '../components/ui/index';
 
 // Icons (you can replace these with react-icons or heroicons)
 const HomeIcon = () => (

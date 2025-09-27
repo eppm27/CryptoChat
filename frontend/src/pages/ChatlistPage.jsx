@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllChats, getChatMessages, createChat } from "../services/userAPI";
 import DeleteChatModal from "../components/DeleteChatModal";
-import { Button, Card, Skeleton, GlassCard } from "../ui/index";
+import { Button, Card, Skeleton, GlassCard } from "../components/ui/index";
 
 const ChatListPage = () => {
   const [chats, setChats] = useState(null);

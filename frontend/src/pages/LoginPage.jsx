@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../services/userAPI";
-import { Button, Input, GlassCard } from "../ui/index";
+import { Button, Input, GlassCard } from "../components/ui/index";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");

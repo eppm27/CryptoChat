@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { fetchUserData } from "../services/userAPI.jsx";
-import { Card, Button, Skeleton, PriceChange, Badge } from "../ui";
+import { Card, Button, Skeleton, PriceChange, Badge } from "../components/ui";
 import { cn } from "../utils/cn";
 import AddModal from "../components/AddModal.jsx";
 
@@ -19,19 +19,25 @@ const WalletPage = () => {
         const user = await fetchUserData();
         setWalletData(user.wallet || []);
         setUserData(user);
-        
+
         // Calculate total portfolio value and change
         if (user.wallet && user.wallet.length > 0) {
           const total = user.wallet.reduce((sum, item) => {
-            return sum + (parseFloat(item.currentPrice || 0) * parseFloat(item.quantity || 0));
+            return (
+              sum +
+              parseFloat(item.currentPrice || 0) *
+                parseFloat(item.quantity || 0)
+            );
           }, 0);
-          
+
           const totalChange = user.wallet.reduce((sum, item) => {
-            const itemValue = parseFloat(item.currentPrice || 0) * parseFloat(item.quantity || 0);
+            const itemValue =
+              parseFloat(item.currentPrice || 0) *
+              parseFloat(item.quantity || 0);
             const change = parseFloat(item.change24h || 0);
-            return sum + (itemValue * change / 100);
+            return sum + (itemValue * change) / 100;
           }, 0);
-          
+
           setTotalValue(total);
           setTotalChange24h(totalChange);
         }
@@ -52,19 +58,25 @@ const WalletPage = () => {
         const user = await fetchUserData();
         setWalletData(user.wallet || []);
         setUserData(user);
-        
+
         // Recalculate totals
         if (user.wallet && user.wallet.length > 0) {
           const total = user.wallet.reduce((sum, item) => {
-            return sum + (parseFloat(item.currentPrice || 0) * parseFloat(item.quantity || 0));
+            return (
+              sum +
+              parseFloat(item.currentPrice || 0) *
+                parseFloat(item.quantity || 0)
+            );
           }, 0);
-          
+
           const totalChange = user.wallet.reduce((sum, item) => {
-            const itemValue = parseFloat(item.currentPrice || 0) * parseFloat(item.quantity || 0);
+            const itemValue =
+              parseFloat(item.currentPrice || 0) *
+              parseFloat(item.quantity || 0);
             const change = parseFloat(item.change24h || 0);
-            return sum + (itemValue * change / 100);
+            return sum + (itemValue * change) / 100;
           }, 0);
-          
+
           setTotalValue(total);
           setTotalChange24h(totalChange);
         }
@@ -76,9 +88,17 @@ const WalletPage = () => {
   };
 
   const WalletItem = ({ item }) => {
-    const itemValue = parseFloat(item.currentPrice || 0) * parseFloat(item.quantity || 0);
-    const change24h = parseFloat(item.change24h || 0);
-    const profitLoss = itemValue * change24h / 100;
+    const currentPrice = parseFloat(item.currentPrice || 0);
+    const purchasePrice = parseFloat(
+      item.purchasePrice || item.currentPrice || 0
+    );
+    const quantity = parseFloat(item.quantity || item.amount || 0);
+
+    const currentValue = currentPrice * quantity;
+    const purchaseValue = purchasePrice * quantity;
+    const totalProfitLoss = currentValue - purchaseValue;
+    const profitLossPercent =
+      purchaseValue > 0 ? (totalProfitLoss / purchaseValue) * 100 : 0;
 
     return (
       <Card className="group hover:shadow-lg transition-all duration-200 bg-white/80 backdrop-blur-sm">
@@ -87,11 +107,11 @@ const WalletPage = () => {
           <div className="flex items-center gap-3 mb-4">
             <div className="relative">
               <img
-                src={item.imageUrl || '/default-crypto-icon.png'}
+                src={item.imageUrl || "/default-crypto-icon.png"}
                 alt={item.coin}
                 className="h-12 w-12 rounded-full"
                 onError={(e) => {
-                  e.target.src = '/default-crypto-icon.png';
+                  e.target.src = "/default-crypto-icon.png";
                 }}
               />
             </div>
@@ -106,8 +126,13 @@ const WalletPage = () => {
             <div className="text-right">
               <p className="text-sm text-neutral-500">Holdings</p>
               <p className="font-semibold text-neutral-900">
-                {parseFloat(item.quantity).toLocaleString()} {item.symbol}
+                {quantity.toLocaleString()} {item.symbol || item.cryptoSymbol}
               </p>
+              {purchasePrice !== currentPrice && (
+                <p className="text-xs text-neutral-500 mt-1">
+                  Avg. Cost: ${purchasePrice.toFixed(2)}
+                </p>
+              )}
             </div>
           </div>
 
@@ -116,18 +141,20 @@ const WalletPage = () => {
             <div>
               <p className="text-sm text-neutral-500 mb-1">Current Price</p>
               <p className="font-semibold text-neutral-900">
-                ${parseFloat(item.currentPrice).toLocaleString(undefined, {
+                $
+                {parseFloat(item.currentPrice).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
-                  maximumFractionDigits: item.currentPrice < 1 ? 6 : 2
+                  maximumFractionDigits: item.currentPrice < 1 ? 6 : 2,
                 })}
               </p>
             </div>
             <div>
-              <p className="text-sm text-neutral-500 mb-1">Total Value</p>
+              <p className="text-sm text-neutral-500 mb-1">Current Value</p>
               <p className="font-bold text-lg text-neutral-900">
-                ${itemValue.toLocaleString(undefined, {
+                $
+                {currentValue.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
+                  maximumFractionDigits: 2,
                 })}
               </p>
             </div>
@@ -141,19 +168,39 @@ const WalletPage = () => {
                 <PriceChange value={item.change24h} size="sm" />
               </div>
               <div className="text-center">
-                <p className="text-xs text-neutral-500 mb-1">P&L (24h)</p>
-                <p className={cn(
-                  "text-sm font-semibold",
-                  profitLoss > 0 ? "text-success-600" : profitLoss < 0 ? "text-danger-600" : "text-neutral-600"
-                )}>
-                  {profitLoss > 0 ? '+' : ''}${Math.abs(profitLoss).toLocaleString(undefined, {
+                <p className="text-xs text-neutral-500 mb-1">Total P&L</p>
+                <p
+                  className={cn(
+                    "text-sm font-semibold",
+                    totalProfitLoss > 0
+                      ? "text-success-600"
+                      : totalProfitLoss < 0
+                      ? "text-danger-600"
+                      : "text-neutral-600"
+                  )}
+                >
+                  {totalProfitLoss > 0 ? "+" : ""}$
+                  {Math.abs(totalProfitLoss).toLocaleString(undefined, {
                     minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
+                    maximumFractionDigits: 2,
                   })}
+                </p>
+                <p
+                  className={cn(
+                    "text-xs",
+                    profitLossPercent > 0
+                      ? "text-success-600"
+                      : profitLossPercent < 0
+                      ? "text-danger-600"
+                      : "text-neutral-600"
+                  )}
+                >
+                  ({profitLossPercent > 0 ? "+" : ""}
+                  {profitLossPercent.toFixed(2)}%)
                 </p>
               </div>
             </div>
-            
+
             <Button variant="outline" size="sm" className="text-xs">
               Trade
             </Button>
@@ -171,7 +218,7 @@ const WalletPage = () => {
           <div className="mb-6">
             <Skeleton className="h-8 w-48 mb-2" />
             <Skeleton className="h-4 w-64 mb-6" />
-            
+
             {/* Portfolio Overview Skeleton */}
             <Card className="p-6 mb-6">
               <Skeleton className="h-6 w-32 mb-4" />
@@ -257,28 +304,36 @@ const WalletPage = () => {
                 <div>
                   <p className="text-primary-100 text-sm mb-1">Total Value</p>
                   <p className="text-2xl font-bold">
-                    ${totalValue.toLocaleString(undefined, {
+                    $
+                    {totalValue.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
+                      maximumFractionDigits: 2,
                     })}
                   </p>
                 </div>
                 <div>
                   <p className="text-primary-100 text-sm mb-1">24h Change</p>
-                  <p className={cn(
-                    "text-lg font-semibold",
-                    totalChange24h > 0 ? "text-success-200" : totalChange24h < 0 ? "text-danger-200" : "text-white"
-                  )}>
-                    {totalChange24h > 0 ? '+' : ''}${Math.abs(totalChange24h).toLocaleString(undefined, {
+                  <p
+                    className={cn(
+                      "text-lg font-semibold",
+                      totalChange24h > 0
+                        ? "text-success-200"
+                        : totalChange24h < 0
+                        ? "text-danger-200"
+                        : "text-white"
+                    )}
+                  >
+                    {totalChange24h > 0 ? "+" : ""}$
+                    {Math.abs(totalChange24h).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
+                      maximumFractionDigits: 2,
                     })}
                   </p>
                 </div>
                 <div>
                   <p className="text-primary-100 text-sm mb-1">Holdings</p>
                   <p className="text-lg font-semibold">
-                    {walletData.length} Crypto{walletData.length > 1 ? 's' : ''}
+                    {walletData.length} Crypto{walletData.length > 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
@@ -292,17 +347,27 @@ const WalletPage = () => {
             <div className="flex items-center gap-3">
               <div className="h-5 w-5 text-danger-600">
                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-danger-900">Error Loading Wallet</h3>
+                <h3 className="font-semibold text-danger-900">
+                  Error Loading Wallet
+                </h3>
                 <p className="text-sm text-danger-700">{error}</p>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {setError(null); window.location.reload();}}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setError(null);
+                  window.location.reload();
+                }}
                 className="ml-auto"
               >
                 Retry
@@ -316,19 +381,22 @@ const WalletPage = () => {
           <Card className="text-center py-12">
             <div className="mx-auto h-24 w-24 text-neutral-400 mb-4">
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
             <h3 className="text-xl font-semibold text-neutral-900 mb-2">
               Your wallet is empty
             </h3>
             <p className="text-neutral-600 mb-6">
-              Start building your crypto portfolio by adding your first cryptocurrency
+              Start building your crypto portfolio by adding your first
+              cryptocurrency
             </p>
-            <Button
-              onClick={() => setShowAddModal(true)}
-              size="lg"
-            >
+            <Button onClick={() => setShowAddModal(true)} size="lg">
               Add Your First Crypto
             </Button>
           </Card>
@@ -339,11 +407,11 @@ const WalletPage = () => {
                 Your Holdings
               </h2>
             </div>
-            
+
             {walletData.map((item, index) => (
               <WalletItem key={`${item.coin}-${index}`} item={item} />
             ))}
-            
+
             {/* Mobile Add Button */}
             <div className="md:hidden pt-4">
               <Button
@@ -365,33 +433,53 @@ const WalletPage = () => {
               <div>
                 <p className="text-sm text-neutral-500 mb-1">Best Performer</p>
                 <p className="font-semibold text-success-600">
-                  {walletData.reduce((best, current) => 
-                    parseFloat(current.change24h) > parseFloat(best.change24h) ? current : best
-                  ).symbol}
+                  {
+                    walletData.reduce((best, current) =>
+                      parseFloat(current.change24h) > parseFloat(best.change24h)
+                        ? current
+                        : best
+                    ).symbol
+                  }
                 </p>
               </div>
               <div>
                 <p className="text-sm text-neutral-500 mb-1">Worst Performer</p>
                 <p className="font-semibold text-danger-600">
-                  {walletData.reduce((worst, current) => 
-                    parseFloat(current.change24h) < parseFloat(worst.change24h) ? current : worst
-                  ).symbol}
+                  {
+                    walletData.reduce((worst, current) =>
+                      parseFloat(current.change24h) <
+                      parseFloat(worst.change24h)
+                        ? current
+                        : worst
+                    ).symbol
+                  }
                 </p>
               </div>
               <div>
                 <p className="text-sm text-neutral-500 mb-1">Largest Holding</p>
                 <p className="font-semibold text-neutral-900">
-                  {walletData.reduce((largest, current) => {
-                    const currentValue = parseFloat(current.currentPrice) * parseFloat(current.quantity);
-                    const largestValue = parseFloat(largest.currentPrice) * parseFloat(largest.quantity);
-                    return currentValue > largestValue ? current : largest;
-                  }).symbol}
+                  {
+                    walletData.reduce((largest, current) => {
+                      const currentValue =
+                        parseFloat(current.currentPrice) *
+                        parseFloat(current.quantity);
+                      const largestValue =
+                        parseFloat(largest.currentPrice) *
+                        parseFloat(largest.quantity);
+                      return currentValue > largestValue ? current : largest;
+                    }).symbol
+                  }
                 </p>
               </div>
               <div>
                 <p className="text-sm text-neutral-500 mb-1">Avg. Change</p>
-                <PriceChange 
-                  value={(walletData.reduce((sum, item) => sum + parseFloat(item.change24h), 0) / walletData.length).toFixed(2)}
+                <PriceChange
+                  value={(
+                    walletData.reduce(
+                      (sum, item) => sum + parseFloat(item.change24h),
+                      0
+                    ) / walletData.length
+                  ).toFixed(2)}
                   size="sm"
                 />
               </div>
@@ -399,7 +487,7 @@ const WalletPage = () => {
           </Card>
         )}
       </div>
-      
+
       {/* Add Crypto Modal */}
       {showAddModal && (
         <AddModal
