@@ -3,10 +3,18 @@
 const jwt = require('jsonwebtoken');
 
 const verifyToken = async (req, res, next) => {
-  const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
+  const cookieToken = req.cookies?.token;
+  const headerToken = req.headers.authorization?.split(' ')[1];
+  const token = cookieToken || headerToken;
 
   if (!token) {
-    console.log('No token in Bearer format');
+    // Only log for actual API calls, not health checks or preflight requests
+    if (req.path !== '/health' && req.method !== 'OPTIONS') {
+      console.log(`🔐 Auth failed for ${req.method} ${req.path}:`);
+      console.log(`  - Cookie token: ${cookieToken ? 'present' : 'missing'}`);
+      console.log(`  - Header token: ${headerToken ? 'present' : 'missing'}`);
+      console.log(`  - All cookies:`, Object.keys(req.cookies || {}).join(', ') || 'none');
+    }
     return res.status(401).json({ message: 'Unauthorized - token err' });
   }
 

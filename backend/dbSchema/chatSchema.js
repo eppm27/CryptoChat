@@ -60,6 +60,9 @@ const messageDB = new mongoose.Schema({
   },
 });
 
+// Compound index for efficient chat message queries with sorting
+messageDB.index({ chat: 1, createdAt: 1 });
+
 module.exports = {
   Chat: userDB.model('Chat', chatDB),
   Message: userDB.model('Message', messageDB),

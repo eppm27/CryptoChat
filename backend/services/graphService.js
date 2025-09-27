@@ -271,6 +271,10 @@ const generatePortfolioData = (wallet, cryptoData) => {
 };
 
 const processGraphsInResponse = async (llmResponse) => {
+  console.log("🔍 GraphService: Processing LLM response");
+  console.log("- LLM Response type:", typeof llmResponse);
+  console.log("- LLM Response visualizations:", llmResponse?.visualizations?.length || 0);
+  
   // Support both raw string and { text, visualizations } object
   const rawText =
     typeof llmResponse === "string" ? llmResponse : llmResponse.text || "";
@@ -280,8 +284,14 @@ const processGraphsInResponse = async (llmResponse) => {
       ? llmResponse.visualizations
       : extractGraphSpecs(rawText);
 
+  console.log("- Graph specs found:", graphSpecs?.length || 0);
+  if (graphSpecs?.length > 0) {
+    console.log("- First graph spec:", JSON.stringify(graphSpecs[0], null, 2));
+  }
+
   if (!graphSpecs || !graphSpecs.length) {
     // No graphs requested, just return the raw text without graph data
+    console.log("❌ No graph specs found, returning empty visualizations");
     return { text: rawText, visualizations: [] };
   }
 

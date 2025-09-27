@@ -56,9 +56,9 @@ const addMessage = async (req, res) => {
 
     // Set up SSE headers
     res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
     });
 
     // Save user message
@@ -71,10 +71,12 @@ const addMessage = async (req, res) => {
     await userMessage.save();
 
     // Send confirmation that user message was saved
-    res.write(`data: ${JSON.stringify({ 
-      type: 'start',
-      userMessage: userMessage.toObject()
-    })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({
+        type: "start",
+        userMessage: userMessage.toObject(),
+      })}\n\n`
+    );
 
     // Get user's wallet for context
     const user = await User.findById(req.user._id);
@@ -84,24 +86,44 @@ const addMessage = async (req, res) => {
     const streamHandler = (chunk) => {
       if (chunk.content) {
         streamContent += chunk.content;
-        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+        
+        // Filter out graph-data blocks from streaming content
+        const filteredContent = chunk.content.replace(/```graph-data\n[\s\S]*?\n```/g, '');
+        
+        if (filteredContent.trim()) {
+          res.write(`data: ${JSON.stringify({
+            ...chunk,
+            content: filteredContent
+          })}\n\n`);
+        }
       }
     };
 
     // Process query with streaming
-    const llmResponse = await llmService.processQuery(content, user.wallet, streamHandler);
-    
+    const llmResponse = await llmService.processQuery(
+      content,
+      user.wallet,
+      streamHandler
+    );
+
     // Process visualizations after streaming is complete
     const processedResponse = await graphService.processGraphsInResponse(
       llmResponse,
       user.wallet
     );
 
+    console.log("🔍 Debug processed response:");
+    console.log("- LLM Response visualizations:", llmResponse?.visualizations?.length || 0);
+    console.log("- Processed Response visualizations:", processedResponse?.visualizations?.length || 0);
+    if (processedResponse?.visualizations?.length > 0) {
+      console.log("- First visualization:", JSON.stringify(processedResponse.visualizations[0], null, 2));
+    }
+
     // Generate title if this is the first user message
     const messageCount = await Message.countDocuments({
       chat: req.params.chatId,
     });
-    
+
     if (messageCount === 1) {
       // First user message
       const title = await generateChatTitle(content);
@@ -163,15 +185,30 @@ const addMessage = async (req, res) => {
     chat.updatedAt = Date.now();
     await chat.save();
 
+    // Send visualization event first if we have visualizations
+    if (visualization.length > 0) {
+      console.log("📊 Sending visualization event:", visualization[0]);
+      res.write(
+        `data: ${JSON.stringify({
+          type: "visualization",
+          visualization: visualization[0],
+        })}\n\n`
+      );
+    } else {
+      console.log("❌ No visualizations to send");
+    }
+
     // Send final completion event with all metadata
-    res.write(`data: ${JSON.stringify({ 
-      type: 'complete',
-      llmMessage: {
-        ...llmMessage.toObject(),
-        text: llmMessage.content,
-      }
-    })}\n\n`);
-    
+    res.write(
+      `data: ${JSON.stringify({
+        type: "complete",
+        llmMessage: {
+          ...llmMessage.toObject(),
+          text: llmMessage.content,
+        },
+      })}\n\n`
+    );
+
     // End the response stream
     res.end();
   } catch (error) {
@@ -182,18 +219,20 @@ const addMessage = async (req, res) => {
       if (!res.headersSent) {
         // Set up SSE headers if not already done
         res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
         });
       }
 
       // Send error as event
-      res.write(`data: ${JSON.stringify({ 
-        type: 'error', 
-        error: error.message || "An error occurred"
-      })}\n\n`);
-      
+      res.write(
+        `data: ${JSON.stringify({
+          type: "error",
+          error: error.message || "An error occurred",
+        })}\n\n`
+      );
+
       // Save error message to database
       if (req.params.chatId) {
         await Message.create({
@@ -203,7 +242,7 @@ const addMessage = async (req, res) => {
           isError: true,
         });
       }
-      
+
       res.end();
     } catch (e) {
       console.error("Error handling streaming error:", e);
@@ -235,17 +274,17 @@ const streamMessage = async (req, res) => {
 
     // Get content from query parameter for GET requests
     const { content } = req.query;
-    
+
     if (!content) {
       return res.status(400).json({ error: "No content provided in query" });
     }
 
     // Set up SSE headers
     res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no' // Important for Nginx proxying
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no", // Important for Nginx proxying
     });
 
     // Save user message
@@ -258,10 +297,12 @@ const streamMessage = async (req, res) => {
     await userMessage.save();
 
     // Send confirmation that user message was saved
-    res.write(`data: ${JSON.stringify({ 
-      type: 'start',
-      userMessage: userMessage.toObject()
-    })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({
+        type: "start",
+        userMessage: userMessage.toObject(),
+      })}\n\n`
+    );
 
     // Get user's wallet for context
     const user = await User.findById(req.user._id);
@@ -286,11 +327,15 @@ const streamMessage = async (req, res) => {
     };
 
     // Process query with streaming
-    const llmResponse = await llmService.processQuery(content, user.wallet, streamHandler);
-    
+    const llmResponse = await llmService.processQuery(
+      content,
+      user.wallet,
+      streamHandler
+    );
+
     // Clear the ping interval
     clearInterval(pingInterval);
-    
+
     // Process visualizations after streaming is complete
     const processedResponse = await graphService.processGraphsInResponse(
       llmResponse,
@@ -301,7 +346,7 @@ const streamMessage = async (req, res) => {
     const messageCount = await Message.countDocuments({
       chat: req.params.chatId,
     });
-    
+
     if (messageCount <= 2) {
       // First or second message (first user message + first LLM response)
       const title = await generateChatTitle(content);
@@ -364,14 +409,16 @@ const streamMessage = async (req, res) => {
     await chat.save();
 
     // Send final completion event with all metadata
-    res.write(`data: ${JSON.stringify({ 
-      type: 'complete',
-      llmMessage: {
-        ...llmMessage.toObject(),
-        text: llmMessage.content,
-      }
-    })}\n\n`);
-    
+    res.write(
+      `data: ${JSON.stringify({
+        type: "complete",
+        llmMessage: {
+          ...llmMessage.toObject(),
+          text: llmMessage.content,
+        },
+      })}\n\n`
+    );
+
     // End the response stream
     res.end();
   } catch (error) {
@@ -382,18 +429,20 @@ const streamMessage = async (req, res) => {
       if (!res.headersSent) {
         // Set up SSE headers if not already done
         res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
         });
       }
 
       // Send error as event
-      res.write(`data: ${JSON.stringify({ 
-        type: 'error', 
-        error: error.message || "An error occurred"
-      })}\n\n`);
-      
+      res.write(
+        `data: ${JSON.stringify({
+          type: "error",
+          error: error.message || "An error occurred",
+        })}\n\n`
+      );
+
       // Save error message to database
       if (req.params.chatId) {
         await Message.create({
@@ -403,7 +452,7 @@ const streamMessage = async (req, res) => {
           isError: true,
         });
       }
-      
+
       res.end();
     } catch (e) {
       console.error("Error handling streaming error:", e);

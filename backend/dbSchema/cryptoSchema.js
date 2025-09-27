@@ -179,4 +179,12 @@ const cryptoDB = new mongoose.Schema({
   },
 });
 
+// Performance indexes for common queries
+cryptoDB.index({ market_cap_rank: 1 }); // For sorting by market cap rank
+cryptoDB.index({ symbol: 1 }); // For symbol-based lookups
+cryptoDB.index({ name: 1 }); // For name-based searches
+cryptoDB.index({ id: 1 }, { unique: true }); // Unique constraint on id
+cryptoDB.index({ current_price: -1 }); // For price-based sorting
+cryptoDB.index({ price_change_percentage_24h_in_currency: -1 }); // For performance sorting
+
 module.exports = cryptoListDB.model("Crypto", cryptoDB, "cryptolists");

@@ -28,10 +28,18 @@ const COLORS = [
   "#f97316",
 ];
 
-const ChatChart = ({ visualization }) => {
-  if (!visualization || !visualization.dataPoints?.length) return null;
+const ChatChart = React.memo(({ visualization }) => {
+  console.log("📊 ChatChart received visualization:", visualization);
+  
+  if (!visualization || !visualization.dataPoints?.length) {
+    console.log("❌ ChatChart: No visualization or dataPoints");
+    return null;
+  }
 
   const { type = "line", dataPoints } = visualization;
+  console.log("📊 Chart type:", type, "DataPoints count:", dataPoints.length);
+  console.log("📊 First few dataPoints:", dataPoints.slice(0, 3));
+  console.log("📊 Last few dataPoints:", dataPoints.slice(-3));
 
   // Handle different data formats based on chart type
   const prepareChartData = () => {
@@ -69,8 +77,8 @@ const ChatChart = ({ visualization }) => {
         .sort((a, b) => a.fullTime - b.fullTime);
     }
 
-    // Default line chart format
-    return dataPoints
+    // Default line chart format - sample data if too many points
+    let processedData = dataPoints
       .map((point) => ({
         time: new Date(point.time).toLocaleDateString(),
         price: point.price || point.volume,
@@ -78,9 +86,20 @@ const ChatChart = ({ visualization }) => {
         fullTime: new Date(point.time),
       }))
       .sort((a, b) => a.fullTime - b.fullTime);
+    
+    // Sample data if there are too many points to improve performance
+    if (processedData.length > 100) {
+      const step = Math.ceil(processedData.length / 100);
+      processedData = processedData.filter((_, index) => index % step === 0);
+      console.log("📊 Sampled data from", dataPoints.length, "to", processedData.length, "points");
+    }
+    
+    return processedData;
   };
 
   const chartData = prepareChartData();
+  console.log("📊 Final chartData:", chartData.length, "points");
+  console.log("📊 Sample chartData:", chartData.slice(0, 2));
 
   // Calculate padding for Y-axis
   const getYAxisDomain = () => {
@@ -272,7 +291,9 @@ const ChatChart = ({ visualization }) => {
       </div>
     </div>
   );
-};
+});
+
+ChatChart.displayName = "ChatChart";
 
 ChatChart.propTypes = {
   visualization: PropTypes.shape({

@@ -110,12 +110,14 @@ const SYSTEM_PROMPT =
   "\n• Provide specific, actionable analysis using real-time market data" +
   "\n• Include relevant metrics: price changes, volume, market cap, volatility" +
   "\n• Suggest risk levels: Low, Medium, High for any recommendations" +
-  "\n• When beneficial, recommend data visualizations using this format:" +
+  "\n• When beneficial, recommend data visualizations using EXACTLY this format:" +
   '\n```graph-data\n{"type":"line|bar|pie|candlestick","title":"Descriptive Title","dataPoints":["cryptoId_metric_timeframe"]}\n```' +
+  "\n• CRITICAL: Always wrap graph JSON in ```graph-data code blocks, NEVER output raw JSON" +
   '\n• Available chart types: "line" (price/volume trends), "bar" (comparisons), "pie" (portfolio), "candlestick" (OHLC data)' +
   '\n• Supported timeframes: "1d", "7d", "30d", "90d", "365d" for comprehensive analysis' +
   '\n• Example dataPoints: ["bitcoin_price_7d"], ["ethereum_price_30d"], ["bitcoin_price_365d"], ["ethereum_volume_90d"]' +
   '\n• For comparisons: ["bitcoin_price_7d", "ethereum_price_7d", "cardano_price_7d"]' +
+  "\n• ALWAYS place the ```graph-data block BEFORE your text analysis, not after" +
   "\n• For investment discussions, always include: 'This analysis is for informational purposes only. Cryptocurrency investments carry significant risk. Always conduct your own research and consider your risk tolerance.'" +
   "\n• If data is unavailable, explain the reason (illiquid market, delisted, new token) and provide context" +
   "\n• Use clear, professional language without excessive formatting" +
@@ -400,6 +402,13 @@ Respond in JSON format only:
 
   // Parse and structure the response normally
   const graphMatch = fullText.match(/```graph-data\n([\s\S]*?)\n```/);
+  console.log("🔍 Graph detection debug:");
+  console.log("- Full text length:", fullText.length);
+  console.log("- Graph match found:", !!graphMatch);
+  if (graphMatch) {
+    console.log("- Graph data:", graphMatch[1]);
+  }
+  
   return {
     text: fullText.replace(/```graph-data\n[\s\S]*?\n```/, "").trim(),
     visualizations: graphMatch ? [JSON.parse(graphMatch[1])] : [],

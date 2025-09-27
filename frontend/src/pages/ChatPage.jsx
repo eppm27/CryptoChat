@@ -27,11 +27,12 @@ const ChatPage = () => {
   const inputRef = useRef(null);
 
   // Generate unique message ID
-  const generateMessageId = () => `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const generateMessageId = () =>
+    `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
   const getWelcomeMsg = () => [
     {
-      id: 'welcome-msg',
+      id: "welcome-msg",
       content:
         "👋 Hello! I'm **CryptoGPT**, your AI crypto assistant.\n\nI can help you with:\n• Real-time crypto prices and market data\n• Technical analysis and trends\n• Investment strategies and insights\n• News and market updates\n\nTry asking me: *'What's the current price of Bitcoin?'* or *'Show me the top trending cryptocurrencies'* 📈",
       role: "chatBot",
@@ -39,7 +40,8 @@ const ChatPage = () => {
       visualization: null,
       timestamp: new Date().toISOString(),
     },
-  ];  const initialiseNewChat = async () => {
+  ];
+  const initialiseNewChat = async () => {
     try {
       const chatData = await createChat();
       return chatData.chat;
@@ -124,9 +126,9 @@ const ChatPage = () => {
 
         if (chatData.messages && chatData.messages.length > 0) {
           // Ensure all messages have IDs for stable rendering
-          const messagesWithIds = chatData.messages.map(msg => ({
+          const messagesWithIds = chatData.messages.map((msg) => ({
             ...msg,
-            id: msg.id || generateMessageId()
+            id: msg.id || generateMessageId(),
           }));
           setMessages(messagesWithIds);
           hasUserSentMessage.current = true;
@@ -164,116 +166,120 @@ const ChatPage = () => {
     initializeChat();
   }, [chatId, location.state, navigate]);
 
-  const handleSendMessage = useCallback(async (messageText = null) => {
-    const textToSend = messageText || input.trim();
-    if (!textToSend || isLoading) return;
+  const handleSendMessage = useCallback(
+    async (messageText = null) => {
+      const textToSend = messageText || input.trim();
+      if (!textToSend || isLoading) return;
 
-    const userMessage = {
-      id: generateMessageId(),
-      content: textToSend,
-      role: "user",
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
-    hasUserSentMessage.current = true;
-
-    try {
-      const response = await fetch(`/api/chat/${currentChatId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ message: textToSend }),
-      });
-
-      if (!response.ok) throw new Error("Failed to send message");
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      const botMessageId = generateMessageId();
-      let botMessage = {
-        id: botMessageId,
-        content: "",
-        role: "chatBot",
-        isError: false,
-        visualization: null,
+      const userMessage = {
+        id: generateMessageId(),
+        content: textToSend,
+        role: "user",
         timestamp: new Date().toISOString(),
       };
 
-      setMessages((prev) => [...prev, botMessage]);
+      setMessages((prev) => [...prev, userMessage]);
+      setInput("");
+      setIsLoading(true);
+      hasUserSentMessage.current = true;
 
-      // Throttle updates to reduce flickering during streaming
-      let updateTimeout = null;
-      const updateBotMessage = () => {
-        setMessages((prev) => {
-          const updated = [...prev];
-          const lastIndex = updated.length - 1;
-          if (updated[lastIndex]?.id === botMessageId) {
-            updated[lastIndex] = { ...botMessage };
-          }
-          return updated;
+      try {
+        const response = await fetch(`/api/chat/${currentChatId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ content: textToSend }),
         });
-      };
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          // Final update
-          if (updateTimeout) clearTimeout(updateTimeout);
-          updateBotMessage();
-          break;
-        }
+        if (!response.ok) throw new Error("Failed to send message");
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        const botMessageId = generateMessageId();
+        let botMessage = {
+          id: botMessageId,
+          content: "",
+          role: "chatBot",
+          isError: false,
+          visualization: null,
+          timestamp: new Date().toISOString(),
+        };
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6));
+        setMessages((prev) => [...prev, botMessage]);
 
-              if (data.type === "content") {
-                botMessage.content += data.content;
-                // Throttle content updates to reduce flickering
-                if (updateTimeout) clearTimeout(updateTimeout);
-                updateTimeout = setTimeout(updateBotMessage, 50);
-              } else if (data.type === "visualization") {
-                botMessage.visualization = data.visualization;
-                // Update immediately for visualization
-                updateBotMessage();
-              } else if (data.type === "complete") {
-                // Handle the final complete message from backend
-                botMessage.content = data.text || botMessage.content;
-                if (updateTimeout) clearTimeout(updateTimeout);
-                updateBotMessage();
-              } else if (data.type === "start") {
-                // Initial message from backend - no action needed
-                console.log("LLM processing started");
+        // Throttle updates to reduce flickering during streaming
+        let updateTimeout = null;
+        const updateBotMessage = () => {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const lastIndex = updated.length - 1;
+            if (updated[lastIndex]?.id === botMessageId) {
+              updated[lastIndex] = { ...botMessage };
+            }
+            return updated;
+          });
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            // Final update
+            if (updateTimeout) clearTimeout(updateTimeout);
+            updateBotMessage();
+            break;
+          }
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                if (data.type === "content") {
+                  botMessage.content += data.content;
+                  // Throttle content updates to reduce flickering
+                  if (updateTimeout) clearTimeout(updateTimeout);
+                  updateTimeout = setTimeout(updateBotMessage, 50);
+                } else if (data.type === "visualization") {
+                  console.log("📊 Received visualization event:", data.visualization);
+                  botMessage.visualization = data.visualization;
+                  // Update immediately for visualization
+                  updateBotMessage();
+                } else if (data.type === "complete") {
+                  // Handle the final complete message from backend
+                  botMessage.content = data.text || botMessage.content;
+                  if (updateTimeout) clearTimeout(updateTimeout);
+                  updateBotMessage();
+                } else if (data.type === "start") {
+                  // Initial message from backend - no action needed
+                  console.log("LLM processing started");
+                }
+              } catch (e) {
+                console.error("Error parsing SSE data:", e);
               }
-            } catch (e) {
-              console.error("Error parsing SSE data:", e);
             }
           }
         }
+      } catch (error) {
+        console.error("Error sending message:", error);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: generateMessageId(),
+            content: "Sorry, I encountered an error. Please try again.",
+            role: "chatBot",
+            isError: true,
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: generateMessageId(),
-          content: "Sorry, I encountered an error. Please try again.",
-          role: "chatBot",
-          isError: true,
-          timestamp: new Date().toISOString(),
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [input, isLoading, currentChatId]);
+    },
+    [input, isLoading, currentChatId]
+  );
 
   const handleSavePrompt = useCallback(async (content) => {
     try {
@@ -290,20 +296,27 @@ const ChatPage = () => {
     setInput(e.target.value);
   }, []);
 
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  }, [handleSendMessage]);
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSendMessage();
+      }
+    },
+    [handleSendMessage]
+  );
 
   // Auto-scroll to bottom - optimized to reduce flickering
   const previousMessageCount = useRef(0);
   useEffect(() => {
-    if (chatContainerRef.current && messages.length > previousMessageCount.current) {
+    if (
+      chatContainerRef.current &&
+      messages.length > previousMessageCount.current
+    ) {
       requestAnimationFrame(() => {
         if (chatContainerRef.current) {
-          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+          chatContainerRef.current.scrollTop =
+            chatContainerRef.current.scrollHeight;
         }
       });
     }
@@ -316,10 +329,7 @@ const ChatPage = () => {
 
     return (
       <div
-        className={cn(
-          "flex w-full",
-          isUser ? "justify-end" : "justify-start"
-        )}
+        className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
       >
         <div
           className={cn(
@@ -382,7 +392,7 @@ const ChatPage = () => {
     );
   });
 
-  MessageBubble.displayName = 'MessageBubble';
+  MessageBubble.displayName = "MessageBubble";
 
   return (
     <div className="fixed inset-0 flex flex-col bg-gradient-to-b from-neutral-50 to-primary-50/20 z-10 pt-14 md:pt-16">
@@ -457,9 +467,9 @@ const ChatPage = () => {
           </div>
         ) : (
           messages.map((message) => (
-            <MessageBubble 
-              key={message.id || message.timestamp} 
-              message={message} 
+            <MessageBubble
+              key={message.id || message.timestamp}
+              message={message}
               onSavePrompt={handleSavePrompt}
             />
           ))

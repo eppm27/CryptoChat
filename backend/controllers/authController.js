@@ -30,7 +30,7 @@ const register = async (req, res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true, // HTTPS only
+      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
       sameSite: 'strict',
       maxAge: 3600000, // 1 hr JWT expiry
     });
@@ -70,7 +70,7 @@ const login = async (req, res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true, // HTTPS only
+      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
       sameSite: 'strict',
       maxAge: 3600000, // 1 hr JWT expiry
     });
