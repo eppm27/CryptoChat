@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchUserData } from "../services/userAPI.jsx";
 import { fetchCryptoDetailsDatabase } from "../services/cryptoAPI.jsx";
@@ -15,6 +15,17 @@ const WalletPage = () => {
   const [totalChange24h, setTotalChange24h] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [error, setError] = useState(null);
+
+  const averageChange24h = useMemo(() => {
+    if (walletData.length === 0) return 0;
+
+    const totalChange = walletData.reduce((sum, item) => {
+      const change = parseFloat(item.change24h);
+      return sum + (Number.isFinite(change) ? change : 0);
+    }, 0);
+
+    return totalChange / walletData.length;
+  }, [walletData]);
 
   useEffect(() => {
     document.title = "My Wallet - CryptoChat";
@@ -563,15 +574,7 @@ const WalletPage = () => {
               </div>
               <div>
                 <p className="text-sm text-neutral-500 mb-1">Avg. Change</p>
-                <PriceChange
-                  value={(
-                    walletData.reduce(
-                      (sum, item) => sum + parseFloat(item.change24h),
-                      0
-                    ) / walletData.length
-                  ).toFixed(2)}
-                  size="sm"
-                />
+                <PriceChange value={averageChange24h} size="sm" />
               </div>
             </div>
           </Card>
