@@ -44,7 +44,7 @@ describe("ChatListPage", () => {
 
     renderWithHistory();
 
-    expect(screen.getByText("+ Start New Chat")).toBeInTheDocument();
+    expect(screen.getByText("Start New Chat")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText("Chat 1")).toBeInTheDocument();
@@ -67,7 +67,7 @@ describe("ChatListPage", () => {
   it("starts a new chat when the button is clicked", async () => {
     const history = renderWithHistory();
 
-    fireEvent.click(screen.getByText("+ Start New Chat"));
+    fireEvent.click(screen.getByText("Start New Chat"));
 
     await waitFor(() => {
       expect(history.location.pathname).toBe("/chat/new");
@@ -103,7 +103,7 @@ describe("ChatListPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("No chats available. Start a new chat!")
+        screen.getByText("No chats yet")
       ).toBeInTheDocument();
     });
   });
@@ -118,8 +118,7 @@ describe("ChatListPage", () => {
     });
 
     fireEvent.click(screen.getAllByTitle("Delete Chat")[0]);
-
-    fireEvent.click(screen.getByText("Delete"));
+    fireEvent.click(screen.getAllByRole("button", { name: /delete/i }).at(-1));
 
     await waitFor(() => {
       expect(screen.queryByText("Chat 1")).not.toBeInTheDocument();

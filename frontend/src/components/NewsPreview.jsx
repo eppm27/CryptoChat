@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { demoNews, isDemoMode } from "../demo/demoStore";
 
 const NewsPreview = () => {
   const [newsList, setNewsList] = useState([]);
@@ -7,6 +8,10 @@ const NewsPreview = () => {
   useEffect(() => {
     const fetchNews = async () => {
       try {
+        if (isDemoMode()) {
+          setNewsList(demoNews.slice(0, 3));
+          return;
+        }
         const response = await fetch("/api/news");
         if (!response.ok) throw new Error("Failed to fetch news");
         const data = await response.json();

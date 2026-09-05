@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, Skeleton, Badge, Button } from "../components/ui";
 import { cn } from "../utils/cn";
+import { demoNews, isDemoMode } from "../demo/demoStore";
 
 const PAGE_SIZE = 10;
 
@@ -50,6 +51,13 @@ const NewsPage = () => {
       }
 
       try {
+        if (isDemoMode()) {
+          const data = pageToFetch === 0 ? demoNews : [];
+          setNewsList((prev) => mergeArticles(pageToFetch === 0 ? [] : prev, data));
+          setHasMore(false);
+          setPage(pageToFetch);
+          return data.length;
+        }
         const params = new URLSearchParams({
           limit: PAGE_SIZE.toString(),
           offset: (pageToFetch * PAGE_SIZE).toString(),

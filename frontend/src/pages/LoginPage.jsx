@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../services/userAPI";
 import { Button, Input, GlassCard } from "../components/ui/index";
+import { enableDemoMode } from "../demo/demoStore";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -9,6 +10,11 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleDemo = () => {
+    enableDemoMode();
+    navigate("/dashboard");
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -110,6 +116,7 @@ const LoginPage = () => {
             )}
 
             <Input
+              name="email"
               type="email"
               label="Email Address"
               placeholder="Enter your email"
@@ -120,6 +127,7 @@ const LoginPage = () => {
             />
 
             <Input
+              name="password"
               type="password"
               label="Password"
               placeholder="Enter your password"
@@ -155,6 +163,19 @@ const LoginPage = () => {
             >
               Sign In
             </Button>
+
+            <div className="flex items-center gap-3" aria-hidden="true">
+              <span className="h-px flex-1 bg-neutral-200" />
+              <span className="text-xs font-medium uppercase tracking-wide text-neutral-400">or</span>
+              <span className="h-px flex-1 bg-neutral-200" />
+            </div>
+
+            <Button type="button" variant="outline" size="lg" className="w-full" onClick={handleDemo}>
+              Explore recruiter demo
+            </Button>
+            <p className="text-center text-xs text-neutral-500">
+              Uses sample data. No account or API keys required.
+            </p>
           </form>
 
           <div className="mt-6 text-center">
@@ -173,14 +194,7 @@ const LoginPage = () => {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-neutral-500 text-sm">
-            By signing in, you agree to our{" "}
-            <a href="#" className="text-primary-600 hover:underline">
-              Terms of Service
-            </a>{" "}
-            and{" "}
-            <a href="#" className="text-primary-600 hover:underline">
-              Privacy Policy
-            </a>
+            Portfolio demonstration project. Crypto information is educational, not financial advice.
           </p>
         </div>
       </div>

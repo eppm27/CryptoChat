@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { fetchUserData } from "../services/userAPI.jsx";
+import { fetchUserData, logoutUser } from "../services/userAPI.jsx";
 import DefaultPfp from "../assets/default-pfp.png";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "../utils/cn";
@@ -262,10 +262,7 @@ const DesktopHeader = () => {
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
+      await logoutUser();
       navigate("/");
     } catch (error) {
       console.error("Logout error:", error);

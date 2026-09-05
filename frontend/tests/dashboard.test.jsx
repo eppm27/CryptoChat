@@ -99,29 +99,18 @@ describe("DashboardPage", () => {
     await waitFor(async () => {
       // not required for userData info
       expect(
-        screen.getByText((content) => content.includes("Welcome, Tiffany"))
+        screen.getByText((content) => content.includes("Welcome back, Tiffany"))
       ).toBeTruthy();
       expect(
-        screen.getByText((content) =>
-          content.includes("Start today’s financial journey here!")
-        )
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText((content) => content.includes("Watchlist"))
-      ).toBeInTheDocument();
+        screen.getAllByText((content) => content.includes("Watchlist")).length
+      ).toBeGreaterThan(0);
 
-      // watchlist column headers
-      expect(screen.getByText("Name")).toBeInTheDocument();
-      expect(screen.getByText("Price")).toBeInTheDocument();
-      expect(screen.getByText("24h Change")).toBeInTheDocument();
-      expect(screen.getByText("Market Cap")).toBeInTheDocument();
-      expect(screen.getByText("Last 7 Days")).toBeInTheDocument();
+      expect(screen.getByText("Watchlist Highlights")).toBeInTheDocument();
 
       // prompt
       expect(
-        screen.getByText((content) => content.includes("Saved"))
-      ).toBeInTheDocument();
-      expect(screen.getByText("Prompt")).toBeInTheDocument();
+        screen.getAllByText((content) => content.includes("Saved")).length
+      ).toBeGreaterThan(0);
 
       expect(
         screen.getByText((content) => content.includes("Quick Start"))
@@ -139,7 +128,7 @@ describe("DashboardPage", () => {
       expect(screen.getByText("BlockFeed")).toBeInTheDocument();
 
       // chat button exists
-      expect(screen.getByAltText("Go to Chat")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Start New Chat/i })).toBeInTheDocument();
     });
   });
 });

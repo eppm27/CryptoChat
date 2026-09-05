@@ -109,11 +109,34 @@ CryptoChat began as a UNSW COMP3900 team capstone project. This repository is ma
 
 ## 📱 Usage
 
-1. Register/Login to create an account
+1. Register/Login to create an account, or choose **Explore recruiter demo** to use sample data without credentials
 2. Explore real-time cryptocurrency markets
 3. Use the AI-powered chat system
 4. Read the latest crypto news
 5. Manage your portfolio
+
+## 🚀 Deployment
+
+The root `Dockerfile` produces one deployable image containing the Express API and compiled React frontend. This keeps authentication and API requests on the same origin and requires one web service plus MongoDB Atlas.
+
+### Render Blueprint
+
+1. Create a MongoDB Atlas cluster and obtain its connection string.
+2. Create a Render Blueprint from this repository using `render.yaml`.
+3. Set `MONGODB_URI` and `MONGODB_URI_CRYPTO` to the Atlas connection strings.
+4. Set `FRONTEND_URL` to the final Render URL, such as `https://cryptochat.onrender.com`.
+5. Add credentials for the live integrations you want enabled.
+6. Deploy and confirm `/health` returns `{ "status": "ok" }`.
+
+The recruiter demo remains usable when optional market, news, AI, and email credentials are not configured.
+
+### Portfolio checklist
+
+- Link directly to the deployed app and label it **Live demo**.
+- State that recruiter-demo data is intentionally simulated.
+- Include one dashboard screenshot and one AI-chat screenshot.
+- Describe it as a team capstone and state your own contributions precisely.
+- Never commit `.env`, Atlas credentials, email passwords, or API keys.
 
 ## 🤝 Made by
 

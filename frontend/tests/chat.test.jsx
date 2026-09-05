@@ -51,7 +51,7 @@ describe("ChatPage", () => {
     );
 
     expect(
-      await screen.findByText(/hello! i'm your crypto assistant/i)
+      await screen.findByText(/hello! i'm.*cryptogpt/i)
     ).toBeInTheDocument();
   });
 
@@ -80,7 +80,7 @@ describe("ChatPage", () => {
       </MemoryRouter>
     );
 
-    await screen.findByText(/hello! i'm your crypto assistant/i);
+    await screen.findByText(/hello! i'm.*cryptogpt/i);
 
     fireEvent.change(screen.getByPlaceholderText(/ask me anything/i), {
       target: { value: "price of ETH?" },
@@ -95,7 +95,7 @@ describe("ChatPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/hello! i'm your crypto assistant/i)
+        screen.getByText(/hello! i'm.*cryptogpt/i)
       ).toBeInTheDocument();
     });
   });
@@ -113,15 +113,13 @@ describe("ChatPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/i'm your crypto assistant/i)
+        screen.getByText(/hello! i'm.*cryptogpt/i)
       ).toBeInTheDocument();
     });
 
-    const promptBubbles = screen.getAllByText(
-      (content, el) =>
-        el?.className?.includes("cursor-pointer") && content.length > 0
-    );
-    expect(promptBubbles.length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(screen.getByRole("button", { name: /prompts/i }));
+    expect(screen.getAllByText("Quick Start Prompts").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button").length).toBeGreaterThanOrEqual(3);
   });
 
   it("shows save prompt success toast if last user message exists", async () => {
@@ -137,7 +135,7 @@ describe("ChatPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/i'm your crypto assistant/i)
+        screen.getByText(/hello! i'm.*cryptogpt/i)
       ).toBeInTheDocument();
     });
 
@@ -175,7 +173,7 @@ describe("ChatPage", () => {
       </MemoryRouter>
     );
 
-    const welcome = await screen.findByText(/i'm your crypto assistant/i);
+    const welcome = await screen.findByText(/hello! i'm.*cryptogpt/i);
     expect(welcome).toBeInTheDocument();
 
     expect(screen.getByLabelText("Download bot response")).toBeInTheDocument();

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import React, { lazy, Suspense, useEffect } from "react";
 import Navigation from "./components/Navigation.jsx";
 import ScrollToTop from "./components/ScrollToTop";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
 const Dashboard = lazy(() => import("./pages/DashboardPage.jsx"));
@@ -19,6 +20,9 @@ const NewsPage = lazy(() => import("./pages/NewsPage"));
 const ChatListPage = lazy(() => import("./pages/ChatlistPage.jsx"));
 const CryptoDetailsPage = lazy(() => import("./pages/CryptoDetailsPage"));
 const CryptoExplorePage = lazy(() => import("./pages/CryptoExplorePage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+
+const protectedPage = (page) => <ProtectedRoute>{page}</ProtectedRoute>;
 
 const PageLoading = () => (
   <div
@@ -61,26 +65,27 @@ function Main() {
         <Suspense fallback={<PageLoading />}>
           <Routes>
             <Route path="/" element={<LoginPage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/watchlist" element={<WatchlistPage />} />
+            <Route path="/dashboard" element={protectedPage(<Dashboard />)} />
+            <Route path="/watchlist" element={protectedPage(<WatchlistPage />)} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/saved" element={<SavedPage />} />
-            <Route path="/chat" element={<ChatListPage />} />
-            <Route path="/chat/:chatId" element={<ChatPage />} />
+            <Route path="/saved" element={protectedPage(<SavedPage />)} />
+            <Route path="/chat" element={protectedPage(<ChatListPage />)} />
+            <Route path="/chat/:chatId" element={protectedPage(<ChatPage />)} />
             <Route path="/forgot" element={<ForgotPasswordPage />} />
             <Route
               path="/password/reset/:userId/:token"
               element={<ResetPasswordPage />}
             />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/editProfile" element={<EditProfile />} />
-            <Route path="/wallet" element={<WalletPage />} />
-            <Route path="/news" element={<NewsPage />} />
+            <Route path="/profile" element={protectedPage(<ProfilePage />)} />
+            <Route path="/editProfile" element={protectedPage(<EditProfile />)} />
+            <Route path="/wallet" element={protectedPage(<WalletPage />)} />
+            <Route path="/news" element={protectedPage(<NewsPage />)} />
             <Route
               path="/cryptoDetails/:cryptoId"
-              element={<CryptoDetailsPage />}
+              element={protectedPage(<CryptoDetailsPage />)}
             />
-            <Route path="/cryptos" element={<CryptoExplorePage />} />
+            <Route path="/cryptos" element={protectedPage(<CryptoExplorePage />)} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
       </div>

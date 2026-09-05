@@ -4,11 +4,14 @@ import "./index.css";
 import App from "./App.jsx";
 import React from "react";
 import { setupAuthInterceptor } from "./utils/authInterceptor";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 setupAuthInterceptor();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>
 );

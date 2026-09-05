@@ -4,13 +4,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - '5173:5173'
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_PROXY_TARGET=http://backend:3000
-    command: ['npm', 'run', 'dev', '--', '--host', '0.0.0.0']
+      - '5173:80'
+    depends_on:
+      - backend
 
   backend:
     build: ./backend
@@ -35,6 +31,7 @@ services:
       - /app/node_modules
     depends_on:
       - mongo
+    restart: unless-stopped
 
   mongo:
     image: mongo:6
@@ -42,6 +39,7 @@ services:
       - '27017:27017' # Optional (only if accessing DB externally)
     volumes:
       - mongo-data:/data/db
+    restart: unless-stopped
 
 volumes:
   mongo-data:

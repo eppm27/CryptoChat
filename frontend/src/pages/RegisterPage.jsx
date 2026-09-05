@@ -183,30 +183,9 @@ const RegisterPage = () => {
               required
             />
 
-            <div className="flex items-start space-x-3">
-              <input
-                type="checkbox"
-                id="terms"
-                className="w-4 h-4 text-primary-600 bg-neutral-100 border-neutral-300 rounded focus:ring-primary-500 focus:ring-2 mt-1"
-                required
-              />
-              <label htmlFor="terms" className="text-sm text-neutral-600">
-                I agree to the{" "}
-                <a
-                  href="#"
-                  className="text-primary-600 hover:underline font-medium"
-                >
-                  Terms of Service
-                </a>{" "}
-                and{" "}
-                <a
-                  href="#"
-                  className="text-primary-600 hover:underline font-medium"
-                >
-                  Privacy Policy
-                </a>
-              </label>
-            </div>
+            <p className="text-xs text-neutral-500">
+              Portfolio demonstration project. Crypto information is educational, not financial advice.
+            </p>
 
             <Button
               type="submit"

@@ -15,13 +15,22 @@ const cookieOptions = () => ({
   maxAge: 3600000,
 });
 
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+
 // Register Controller
 const register = async (req, res) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, password } = req.body;
+    const email = normalizeEmail(req.body.email);
 
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({ message: "All input is required" });
+    }
+    if (!isValidEmail(email) || password.length < 8) {
+      return res.status(400).json({
+        message: "Enter a valid email and a password of at least 8 characters",
+      });
     }
 
     // Check if user already exists
@@ -50,7 +59,8 @@ const register = async (req, res) => {
 // Login Controller
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = normalizeEmail(req.body.email);
 
     // Check inputs
     if (!(email && password)) {
@@ -95,7 +105,7 @@ const logout = (req, res) => {
 // Generate reset token, save to user
 const generateResetToken = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = normalizeEmail(req.body.email);
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {

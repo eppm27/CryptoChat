@@ -1,4 +1,13 @@
+import {
+  demoChats,
+  demoMessages,
+  demoUser,
+  disableDemoMode,
+  isDemoMode,
+} from "../demo/demoStore";
+
 export const fetchUserData = async () => {
+  if (isDemoMode()) return structuredClone(demoUser);
   try {
     const response = await fetch("/user/user-data", {
       method: "GET",
@@ -25,6 +34,10 @@ export const fetchUserData = async () => {
 
 // also move login and logout here
 export const logoutUser = async () => {
+  if (isDemoMode()) {
+    disableDemoMode();
+    return { ok: true };
+  }
   try {
     const response = await fetch("/auth/logout", {
       method: "POST",
@@ -42,6 +55,7 @@ export const logoutUser = async () => {
 };
 
 export const updateUserInfo = async ({ firstName, lastName, pfp }) => {
+  if (isDemoMode()) return "Demo profile updated for this preview";
   try {
     const response = await fetch("/user/update-user-info", {
       method: "PUT",
@@ -67,6 +81,7 @@ export const updateUserInfo = async ({ firstName, lastName, pfp }) => {
 };
 
 export const addCryptoToWallet = async (selectedCrypto, cryptoAmount) => {
+  if (isDemoMode()) return "Demo wallet updated for this preview";
   try {
     const response = await fetch("/user/add-crypto", {
       method: "POST",
@@ -101,6 +116,7 @@ export const addCryptoToWallet = async (selectedCrypto, cryptoAmount) => {
 };
 
 export const addCryptoToWatchlist = async (selectedCrypto) => {
+  if (isDemoMode()) return "Demo watchlist updated for this preview";
   try {
     const response = await fetch("/user/add-to-watchlist", {
       method: "POST",
@@ -123,6 +139,7 @@ export const addCryptoToWatchlist = async (selectedCrypto) => {
 };
 
 export const addPromptToSaved = async (savePrompt) => {
+  if (isDemoMode()) return "Demo prompt saved for this preview";
   try {
     const response = await fetch("/user/add-saved-prompt", {
       method: "POST",
@@ -143,6 +160,7 @@ export const addPromptToSaved = async (savePrompt) => {
 };
 
 export const deleteCryptoFromWallet = async (rowData) => {
+  if (isDemoMode()) return "Demo wallet updated for this preview";
   try {
     const response = await fetch("/user/remove-from-wallet", {
       method: "DELETE",
@@ -163,6 +181,7 @@ export const deleteCryptoFromWallet = async (rowData) => {
 };
 
 export const deleteCryptoFromWatchlist = async (rowData) => {
+  if (isDemoMode()) return "Demo watchlist updated for this preview";
   try {
     const response = await fetch("/user/remove-from-watchlist", {
       method: "DELETE",
@@ -183,6 +202,7 @@ export const deleteCryptoFromWatchlist = async (rowData) => {
 };
 
 export const deletePromptFromSaved = async (rowData) => {
+  if (isDemoMode()) return "Demo saved prompts updated for this preview";
   try {
     const response = await fetch("/user/remove-from-saved", {
       method: "DELETE",
@@ -203,6 +223,7 @@ export const deletePromptFromSaved = async (rowData) => {
 };
 
 export const updateCryptoAmount = async (rowData, amount) => {
+  if (isDemoMode()) return "Demo holding updated for this preview";
   try {
     const response = await fetch("/user/update-crypto-amount", {
       method: "PUT",
@@ -224,6 +245,7 @@ export const updateCryptoAmount = async (rowData, amount) => {
 };
 
 export const createChat = async (initialContent = "") => {
+  if (isDemoMode()) return { chat: { _id: "demo-new", title: initialContent || "New demo chat" } };
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -236,6 +258,7 @@ export const createChat = async (initialContent = "") => {
 };
 
 export const getAllChats = async () => {
+  if (isDemoMode()) return structuredClone(demoChats);
   const response = await fetch("/api/chat", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
@@ -247,6 +270,7 @@ export const getAllChats = async () => {
 };
 
 export const getChatMessages = async (chatId) => {
+  if (isDemoMode()) return { messages: structuredClone(demoMessages) };
   const response = await fetch(`/api/chat/${chatId}/messages`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
@@ -258,6 +282,7 @@ export const getChatMessages = async (chatId) => {
 };
 
 export const sendMessageToChat = async (chatId, content) => {
+  if (isDemoMode()) return { content, role: "user" };
   const response = await fetch(`/api/chat/${chatId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -274,6 +299,7 @@ export const sendMessageToChat = async (chatId, content) => {
 };
 
 export const deleteChat = async (chatId) => {
+  if (isDemoMode()) return;
   const response = await fetch(`/api/chat/${chatId}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
@@ -296,7 +322,7 @@ export const loginUser = async ({ email, password }) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || "Login failed");
+      throw new Error(errorData.message || errorData.error || "Login failed");
     }
 
     return response.json();
@@ -323,7 +349,7 @@ export const registerUser = async ({
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || "Registration failed");
+      throw new Error(errorData.message || errorData.error || "Registration failed");
     }
 
     return response.json();

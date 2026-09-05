@@ -13,10 +13,9 @@ const getLatestNews = async (req, res) => {
       ? Math.max(0, Math.floor(offsetNumber))
       : 0;
 
-    const news = await NewsArticle.find()
-      .sort({ published_at: -1 })
-      .skip(parsedOffset)
-      .limit(parsedLimit);
+    let query = NewsArticle.find().sort({ published_at: -1 });
+    if (parsedOffset > 0) query = query.skip(parsedOffset);
+    const news = await query.limit(parsedLimit);
     res.json(news);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -43,15 +42,14 @@ const getNewsByTicker = async (req, res) => {
       ? Math.max(0, Math.floor(offsetNumber))
       : 0;
 
-    const news = await NewsArticle.find({
+    let query = NewsArticle.find({
       $or: [
         { tickers: `CRYPTO:${formattedTicker}` }, // Alpha Vantage format
         { tickers: formattedTicker }, // Other APIs (RapidAPI, etc.)
       ],
-    })
-      .sort({ published_at: -1 }) // Newest first
-      .skip(parsedOffset)
-      .limit(parsedLimit);
+    }).sort({ published_at: -1 }); // Newest first
+    if (parsedOffset > 0) query = query.skip(parsedOffset);
+    const news = await query.limit(parsedLimit);
 
     res.json(news);
   } catch (error) {

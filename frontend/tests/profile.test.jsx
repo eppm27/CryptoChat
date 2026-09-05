@@ -44,14 +44,12 @@ describe("ProfilePage", () => {
 
     render(<ProfilePage />);
 
-    expect(
-      document.querySelectorAll(".MuiSkeleton-root").length
-    ).toBeGreaterThan(0);
+    expect(document.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
 
     await waitFor(() => {
       expect(screen.getByText("John Doe")).toBeInTheDocument();
       expect(screen.getByText("john@example.com")).toBeInTheDocument();
-      expect(screen.getByText("Mocked CreateTables")).toBeInTheDocument();
+      expect(screen.getByText("Account Settings")).toBeInTheDocument();
     });
   });
 
@@ -61,9 +59,7 @@ describe("ProfilePage", () => {
 
     render(<ProfilePage />);
 
-    expect(
-      document.querySelectorAll(".MuiSkeleton-root").length
-    ).toBeGreaterThan(0);
+    expect(document.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
 
     await waitFor(() => {
       expect(console.error).toHaveBeenCalledWith(
@@ -98,10 +94,11 @@ describe("ProfilePage", () => {
     render(<ProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Logout")).toBeInTheDocument();
+      expect(screen.getByText("Sign Out")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Logout"));
+    fireEvent.click(screen.getByText("Sign Out"));
+    fireEvent.click(screen.getAllByRole("button", { name: "Sign Out" }).at(-1));
 
     await waitFor(() => {
       expect(logoutUser).toHaveBeenCalledTimes(1);
@@ -119,10 +116,11 @@ describe("ProfilePage", () => {
     render(<ProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Logout")).toBeInTheDocument();
+      expect(screen.getByText("Sign Out")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Logout"));
+    fireEvent.click(screen.getByText("Sign Out"));
+    fireEvent.click(screen.getAllByRole("button", { name: "Sign Out" }).at(-1));
 
     await waitFor(() => {
       expect(logoutUser).toHaveBeenCalledTimes(1);

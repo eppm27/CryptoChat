@@ -17,6 +17,8 @@ vi.mock("../src/services/userAPI", () => ({
 
 vi.mock("../src/services/cryptoAPI", () => ({
   fetchCryptoDetailsDatabase: vi.fn(),
+  fetchCryptoGraphData: vi.fn().mockResolvedValue([]),
+  fetchCryptoIndicatorGraph: vi.fn().mockResolvedValue([]),
 }));
 
 describe("Bitcoin crypto page", () => {
@@ -272,15 +274,7 @@ describe("Bitcoin crypto page", () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => {
-      // Check if tabs are rendered
-      expect(screen.getAllByRole("tab")).toHaveLength(3);
-      expect(
-        screen.getByRole("tab", { name: /Overview/i })
-      ).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /Info/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /News/i })).toBeInTheDocument();
-    });
+    expect(await screen.findByRole("heading", { name: "Bitcoin" })).toBeInTheDocument();
 
     const watchlistButton = await screen.findByRole("button", {
       name: /Remove from Watchlist/i,
@@ -288,57 +282,23 @@ describe("Bitcoin crypto page", () => {
     expect(watchlistButton).toBeInTheDocument();
 
     // crypto header info
-    expect(screen.getByText("AUD")).toBeInTheDocument();
     expect(screen.getByText("Bitcoin")).toBeInTheDocument();
     const btcText = screen.getAllByText("BTC");
     expect(btcText.length).toBeGreaterThan(0);
 
-    expect(screen.getByText("$148,968.00")).toBeInTheDocument(); // current price
+    expect(screen.getByText("$148,968")).toBeInTheDocument(); // current price
 
-    // crypto graph exists
-    expect(screen.getByTestId("crypto-graph")).toBeInTheDocument();
+    // chart section exists (the chart itself is lazy-loaded)
+    expect(screen.getByText("Bitcoin Price Chart")).toBeInTheDocument();
 
-    // check for three data section headings
-    const bitcoinStatsHeading = Array.from(
-      screen.getAllByText(/Bitcoin Statistics/i)
-    ).find(
-      // statistical section
-      (element) =>
-        element.tagName === "P" && element.classList.contains("font-bold")
-    );
-    expect(bitcoinStatsHeading).toBeInTheDocument();
-
-    const infoHeading = Array.from(screen.getAllByText(/Info/i)).find(
-      // info section
-      (element) =>
-        element.tagName === "P" && element.classList.contains("font-bold")
-    );
-    expect(infoHeading).toBeInTheDocument();
-
-    const historicalDataHeading = Array.from(
-      screen.getAllByText(/BTC Historical Data/i)
-    ).find(
-      // historical section
-      (element) =>
-        element.tagName === "P" && element.classList.contains("font-bold")
-    );
-    expect(historicalDataHeading).toBeInTheDocument();
-
-    const descriptionHeading = Array.from(screen.getAllByText(/About/i)).find(
-      (element) =>
-        element.tagName === "P" && element.classList.contains("font-bold")
-    );
-    expect(descriptionHeading).toBeInTheDocument();
+    expect(screen.getByText("Key Metrics")).toBeInTheDocument();
+    expect(screen.getByText("Price Performance")).toBeInTheDocument();
+    expect(screen.getByText("About Bitcoin")).toBeInTheDocument();
     expect(
       screen.getByText(/Bitcoin is the first successful internet money/)
     ).toBeInTheDocument(); // description section
 
-    const RSIHeading = Array.from(screen.getAllByText(/BTC RSI/i)).find(
-      // RSI sections
-      (element) =>
-        element.tagName === "P" && element.classList.contains("font-bold")
-    );
-    expect(RSIHeading).toBeInTheDocument();
+    expect(screen.getByText(/BTC RSI Indicator/i)).toBeInTheDocument();
   });
 
   it("toggle button - remove crypto from watchlist, button state change", async () => {
@@ -381,9 +341,8 @@ describe("Bitcoin crypto page", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Related News")).toBeInTheDocument();
-
     await waitFor(() => {
+      expect(screen.getByText("Latest News")).toBeInTheDocument();
       expect(screen.getByText("Bitcoin surges past $60K")).toBeInTheDocument();
       expect(screen.getByText("Ethereum upgrade launches")).toBeInTheDocument();
       expect(screen.getByText("CryptoNews")).toBeInTheDocument();

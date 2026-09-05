@@ -33,13 +33,13 @@ describe('LoginPage', () => {
       </MemoryRouter>
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Email'), {
+    fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: 'test@example.com' },
     });
-    fireEvent.change(screen.getByPlaceholderText('Password'), {
+    fireEvent.change(screen.getByLabelText(/password/i), {
       target: { value: 'password123' },
     });
-    fireEvent.click(screen.getByText('Login'));
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
       expect(loginMock).toHaveBeenCalledWith({
@@ -57,9 +57,9 @@ describe('LoginPage', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByPlaceholderText('Email')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Password')).toBeInTheDocument();
-    expect(screen.getByText('Login')).toBeInTheDocument();
+    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
   it('shows error message when login fails', async () => {
@@ -71,13 +71,13 @@ describe('LoginPage', () => {
       </MemoryRouter>
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Email'), {
+    fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: 'fail@example.com' },
     });
-    fireEvent.change(screen.getByPlaceholderText('Password'), {
+    fireEvent.change(screen.getByLabelText(/password/i), {
       target: { value: 'wrongpass' },
     });
-    fireEvent.click(screen.getByText('Login'));
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
@@ -91,10 +91,7 @@ describe('LoginPage', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText(/forgot password\?/i));
-    expect(navigateMock).toHaveBeenCalledWith('/forgot');
-
-    fireEvent.click(screen.getByText(/get started/i));
-    expect(navigateMock).toHaveBeenCalledWith('/register');
+    expect(screen.getByRole('link', { name: /forgot password/i })).toHaveAttribute('href', '/forgot');
+    expect(screen.getByRole('link', { name: /sign up/i })).toHaveAttribute('href', '/register');
   });
 });
