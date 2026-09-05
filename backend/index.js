@@ -9,12 +9,11 @@ app.use(cookieParser());
 
 // To parse JSON requests
 app.use(express.json());
-app.use(
-  cors({
-    origin: "http://localhost:5173", // Frontend URL
-    credentials: true, // For cookies
-  })
-);
+const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim());
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 // import routes
 const llmRoutes = require("./routes/llmRoutes");
@@ -40,7 +39,11 @@ app.use("/api/crypto", frontendCryptoRoutes);
 
 // rudimentary testing route
 app.get("/", (req, res) => {
-  res.send("Server is operational (thank God)");
+  res.send("CryptoChat API is operational");
+});
+
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
 });
 
 app.listen(port, () => {

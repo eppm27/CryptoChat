@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import process from "node:process";
 // for testing
 
 // https://vite.dev/config/
@@ -10,15 +11,10 @@ export default defineConfig({
     environment: "happy-dom",
   },
   server: {
-    // proxy: {
-    //   "/user": "http://localhost:3000", // Change 'backend' to 'localhost'
-    //   "/auth": "http://localhost:3000",
-    //   "/api": "http://localhost:3000",
-    // },
     proxy: {
-      '/user': 'http://backend:3000', // for docker setup
-      '/auth': 'http://backend:3000',
-      '/api': 'http://backend:3000',
+      '/user': process.env.VITE_PROXY_TARGET || 'http://localhost:3000',
+      '/auth': process.env.VITE_PROXY_TARGET || 'http://localhost:3000',
+      '/api': process.env.VITE_PROXY_TARGET || 'http://localhost:3000',
     },
   },
 });

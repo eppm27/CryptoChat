@@ -8,6 +8,8 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    environment:
+      - VITE_PROXY_TARGET=http://backend:3000
     command: ['npm', 'run', 'dev', '--', '--host', '0.0.0.0']
 
   backend:
@@ -27,6 +29,7 @@ services:
       - TWELVE_DATA_API_KEY
       - RAPIDAPI_KEY
       - ALPHA_VANTAGE_IND_KEY
+      - FRONTEND_URL=http://localhost:5173
     volumes:
       - ./backend:/app
       - /app/node_modules

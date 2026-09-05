@@ -8,10 +8,21 @@ const {
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 
+const cookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  maxAge: 3600000,
+});
+
 // Register Controller
 const register = async (req, res) => {
   try {
     const { firstName, lastName, email, password } = req.body;
+
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ message: "All input is required" });
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -28,12 +39,7 @@ const register = async (req, res) => {
       expiresIn: "1h",
     });
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: "strict",
-      maxAge: 3600000, // 1 hr JWT expiry
-    });
+    res.cookie("token", token, cookieOptions());
     res.status(201).json({ message: "Registration successful" });
   } catch (error) {
     console.error("Error:", error);
@@ -68,12 +74,7 @@ const login = async (req, res) => {
       expiresIn: "1h",
     });
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: "strict",
-      maxAge: 3600000, // 1 hr JWT expiry
-    });
+    res.cookie("token", token, cookieOptions());
 
     res.status(200).json({ message: "Login successful" });
   } catch (error) {
@@ -84,7 +85,8 @@ const login = async (req, res) => {
 
 // Logout controller
 const logout = (req, res) => {
-  res.clearCookie("token");
+  const { maxAge, ...clearOptions } = cookieOptions();
+  res.clearCookie("token", clearOptions);
   res.json({ message: "Logged out successfully" });
 };
 
@@ -161,11 +163,21 @@ const updatePassword = async (req, res) => {
   try {
     const { userId, token, password } = req.body;
 
+    if (!userId || !token || !password) {
+      return res.status(400).json({ message: "All input is required" });
+    }
+
     const user = await User.findOne({
       _id: userId,
       resetPasswordToken: { $exists: true },
       resetPasswordExpires: { $gt: Date.now() },
     });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Password reset token is invalid or has expired",
+      });
+    }
 
     // 2. Verify token matches (bcrypt comparison)
     const isValidToken = await bcrypt.compare(token, user.resetPasswordToken);

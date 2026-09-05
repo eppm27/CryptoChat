@@ -1,8 +1,8 @@
 # Crypto Chat Project
 
-A full-stack cryptocurrency trading and chat application built with React, Node.js, and MongoDB.
+A full-stack cryptocurrency research and portfolio application built with React, Node.js, and MongoDB. It combines market data, financial news, portfolio tracking, and a Gemini-powered assistant.
 
-## �� Features
+## ✨ Features
 
 - **Real-time Cryptocurrency Data**: Live price tracking and market information
 - **AI-Powered Chat**: Interactive chat system with intelligent responses
@@ -31,11 +31,12 @@ A full-stack cryptocurrency trading and chat application built with React, Node.
 
 - Alpha Vantage (Financial News)
 - Twelve Data (Crypto Prices)
-- OpenAI (Chat functionality)
+- Google Gemini (chat functionality)
+- CoinGecko (market data)
 
 ## 📋 Prerequisites
 
-- Node.js (v16 or higher)
+- Node.js 20 or higher
 - MongoDB (local or Docker)
 - Docker (optional, for containerized deployment)
 
@@ -46,8 +47,8 @@ A full-stack cryptocurrency trading and chat application built with React, Node.
 1. **Clone the repository**
 
    ```bash
-   git clone <your-repo-url>
-   cd crypto-chat-project
+   git clone https://github.com/eppm27/CryptoChat.git
+   cd CryptoChat
    ```
 
 2. **Install dependencies**
@@ -60,7 +61,11 @@ A full-stack cryptocurrency trading and chat application built with React, Node.
 
 3. **Set up environment variables**
 
-   - Copy the `.env` file and update with your API keys
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+
+   Update `backend/.env` with your own database URL, secrets, and API keys.
 
 4. **Start MongoDB**
 
@@ -72,10 +77,10 @@ A full-stack cryptocurrency trading and chat application built with React, Node.
 
    ```bash
    # Backend
-   cd backend && node index.js
+   npm run start:backend
 
    # Frontend (new terminal)
-   cd frontend && npm run dev
+   npm run start:frontend
    ```
 
 ## 🌐 Environment Variables
@@ -87,6 +92,20 @@ Required API keys in `.env`:
 - GEMINI_API_KEY
 - ALPHA_VANTAGE_API_KEY
 - TWELVE_DATA_API_KEY
+
+See `backend/.env.example` for the complete configuration. For deployment, set `NODE_ENV=production` and `FRONTEND_URL` to the deployed frontend origin.
+
+## ✅ Quality checks
+
+```bash
+npm test
+npm run lint
+npm run build
+```
+
+## Project context
+
+CryptoChat began as a UNSW COMP3900 team capstone project. This repository is maintained by Ellis Mon as a portfolio version of the application.
 
 ## 📱 Usage
 

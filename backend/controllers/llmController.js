@@ -71,7 +71,6 @@ exports.askLLM = async (req, res) => {
         console.error("Error sending SSE response: ", finalErr);
       }
     }
-    res.status(500).json({ error: "internal service err " });
   }
 };
 
@@ -98,8 +97,6 @@ exports.chatLLM = async (req, res) => {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
-      "Access-Control-Allow-Origin": "http://localhost:5173",
-      "Access-Control-Allow-Credentials": "true",
     });
 
     // Send initial message
