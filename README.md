@@ -1,8 +1,8 @@
 # Crypto Chat Project
 
-A full-stack cryptocurrency trading and chat application built with React, Node.js, and MongoDB.
+A full-stack cryptocurrency research and portfolio application built with React, Node.js, and MongoDB. It combines market data, financial news, portfolio tracking, and a Gemini-powered assistant.
 
-## �� Features
+## ✨ Features
 
 - **Real-time Cryptocurrency Data**: Live price tracking and market information
 - **AI-Powered Chat**: Interactive chat system with intelligent responses
@@ -31,11 +31,12 @@ A full-stack cryptocurrency trading and chat application built with React, Node.
 
 - Alpha Vantage (Financial News)
 - Twelve Data (Crypto Prices)
-- OpenAI (Chat functionality)
+- Google Gemini (chat functionality)
+- CoinGecko (market data)
 
 ## 📋 Prerequisites
 
-- Node.js (v16 or higher)
+- Node.js 20 or higher
 - MongoDB (local or Docker)
 - Docker (optional, for containerized deployment)
 
@@ -46,8 +47,8 @@ A full-stack cryptocurrency trading and chat application built with React, Node.
 1. **Clone the repository**
 
    ```bash
-   git clone <your-repo-url>
-   cd crypto-chat-project
+   git clone https://github.com/eppm27/CryptoChat.git
+   cd CryptoChat
    ```
 
 2. **Install dependencies**
@@ -60,7 +61,11 @@ A full-stack cryptocurrency trading and chat application built with React, Node.
 
 3. **Set up environment variables**
 
-   - Copy the `.env` file and update with your API keys
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+
+   Update `backend/.env` with your own database URL, secrets, and API keys.
 
 4. **Start MongoDB**
 
@@ -72,10 +77,10 @@ A full-stack cryptocurrency trading and chat application built with React, Node.
 
    ```bash
    # Backend
-   cd backend && node index.js
+   npm run start:backend
 
    # Frontend (new terminal)
-   cd frontend && npm run dev
+   npm run start:frontend
    ```
 
 ## 🌐 Environment Variables
@@ -88,13 +93,50 @@ Required API keys in `.env`:
 - ALPHA_VANTAGE_API_KEY
 - TWELVE_DATA_API_KEY
 
+See `backend/.env.example` for the complete configuration. For deployment, set `NODE_ENV=production` and `FRONTEND_URL` to the deployed frontend origin.
+
+## ✅ Quality checks
+
+```bash
+npm test
+npm run lint
+npm run build
+```
+
+## Project context
+
+CryptoChat began as a UNSW COMP3900 team capstone project. This repository is maintained by Ellis Mon as a portfolio version of the application.
+
 ## 📱 Usage
 
-1. Register/Login to create an account
+1. Register/Login to create an account, or choose **Explore recruiter demo** to use sample data without credentials
 2. Explore real-time cryptocurrency markets
 3. Use the AI-powered chat system
 4. Read the latest crypto news
 5. Manage your portfolio
+
+## 🚀 Deployment
+
+The root `Dockerfile` produces one deployable image containing the Express API and compiled React frontend. This keeps authentication and API requests on the same origin and requires one web service plus MongoDB Atlas.
+
+### Render Blueprint
+
+1. Create a MongoDB Atlas cluster and obtain its connection string.
+2. Create a Render Blueprint from this repository using `render.yaml`.
+3. Set `MONGODB_URI` and `MONGODB_URI_CRYPTO` to the Atlas connection strings.
+4. Set `FRONTEND_URL` to the final Render URL, such as `https://cryptochat.onrender.com`.
+5. Add credentials for the live integrations you want enabled.
+6. Deploy and confirm `/health` returns `{ "status": "ok" }`.
+
+The recruiter demo remains usable when optional market, news, AI, and email credentials are not configured.
+
+### Portfolio checklist
+
+- Link directly to the deployed app and label it **Live demo**.
+- State that recruiter-demo data is intentionally simulated.
+- Include one dashboard screenshot and one AI-chat screenshot.
+- Describe it as a team capstone and state your own contributions precisely.
+- Never commit `.env`, Atlas credentials, email passwords, or API keys.
 
 ## 🤝 Made by
 

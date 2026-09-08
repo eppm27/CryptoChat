@@ -4,7 +4,10 @@
   "description": "A full-stack cryptocurrency trading and chat application",
   "main": "index.js",
   "scripts": {
-    "test": "jest",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "jest --runInBand",
+    "test:frontend": "npm --prefix frontend test",
+    "lint": "npm --prefix frontend run lint",
     "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "start:backend": "cd backend && node index.js",
     "start:frontend": "cd frontend && npm run dev",
@@ -26,19 +29,23 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YourUsername/crypto-chat-project.git"
+    "url": "https://github.com/eppm27/CryptoChat.git"
   },
   "devDependencies": {
     "@babel/core": "^7.23.5",
     "@babel/preset-env": "^7.23.5",
+    "@babel/preset-react": "^7.29.7",
     "@testing-library/react": "^16.3.0",
+    "body-parser": "^2.3.0",
     "concurrently": "^8.2.2",
-    "happy-dom": "^18.0.1",
     "jest": "^29.7.0",
+    "jest-mock-req-res": "^1.0.2",
+    "mongodb-memory-server": "^11.2.0",
+    "supertest": "^7.2.2",
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "axios": "^1.6.2",
+    "axios": "^1.20.0",
     "dotenv": "^16.3.1"
   }
 }

@@ -101,10 +101,14 @@ Card.displayName = "Card";
 // Input Component
 export const Input = React.forwardRef(
   ({ className, type = "text", label, error, icon, ...props }, ref) => {
+    const inputId = props.id || props.name;
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium text-neutral-700 mb-2">
+          <label
+            htmlFor={inputId}
+            className="block text-sm font-medium text-neutral-700 mb-2"
+          >
             {label}
           </label>
         )}
@@ -115,6 +119,7 @@ export const Input = React.forwardRef(
             </div>
           )}
           <input
+            id={inputId}
             type={type}
             className={cn(
               "w-full px-4 py-3 text-base border border-neutral-300 rounded-xl bg-white/80 backdrop-blur-sm placeholder-neutral-400 transition-all duration-200",

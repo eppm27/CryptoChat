@@ -17,6 +17,7 @@ import ChatChart from "../components/ChatChart";
 import promptList from "../components/PromptList";
 import { Button, Card, Skeleton, BottomSheet } from "../components/ui/index";
 import { cn } from "../utils/cn";
+import { isDemoMode } from "../demo/demoStore";
 
 // Icons - moved outside component to prevent recreation
 const SendIcon = () => (
@@ -89,6 +90,17 @@ const MessageBubble = React.memo(
     const isUser = message.role === "user";
     const isBot = message.role === "chatBot";
 
+    const downloadResponse = () => {
+      const url = URL.createObjectURL(new Blob([message.content], { type: "text/plain" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "cryptochat-response.txt";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    };
+
     // Memoize the visualization prop to prevent unnecessary re-renders
     const visualizationData = useMemo(() => {
       if (!message.visualization) return null;
@@ -123,10 +135,25 @@ const MessageBubble = React.memo(
                 variant="ghost"
                 size="sm"
                 onClick={() => onSavePrompt(message.content)}
+                aria-label="Save prompt"
                 className="h-6 w-6 p-0"
               >
                 <BookmarkIcon />
               </Button>
+              <Button variant="ghost" size="sm" onClick={downloadResponse} aria-label="Download bot response" className="h-6 w-6 p-0">
+                ↓
+              </Button>
+              <a
+                href={`mailto:cryptochat.it@gmail.com?subject=CryptoChat response report&body=${encodeURIComponent(message.content)}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  window.location.href = event.currentTarget.href;
+                }}
+                aria-label="Report bot message"
+                className="text-xs text-neutral-400 hover:text-danger-600"
+              >
+                !
+              </a>
             </div>
           )}
 
@@ -324,6 +351,18 @@ const ChatPage = () => {
         }
 
         hasUserSentMessage.current = true;
+
+        if (isDemoMode()) {
+          setMessages((prev) => [...prev, {
+            id: generateMessageId(),
+            content: "This recruiter demo uses sample data, so no live AI request was made. In the deployed application, CryptoChat streams a Gemini response and can use wallet context to explain market data. **This is educational information, not financial advice.**",
+            role: "chatBot",
+            isError: false,
+            visualization: null,
+            timestamp: new Date().toISOString(),
+          }]);
+          return;
+        }
 
         const response = await fetch(`/api/chat/${chatIdToUse}/messages`, {
           method: "POST",
@@ -556,6 +595,17 @@ const ChatPage = () => {
             <Button
               variant="ghost"
               size="sm"
+              onClick={() => {
+                setMessages(getWelcomeMsg());
+                setCurrentChatId(null);
+                hasUserSentMessage.current = false;
+              }}
+            >
+              Clear Chat
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setShowPrompts(true)}
               icon={<SparklesIcon />}
               className="hidden md:flex"
@@ -580,6 +630,7 @@ const ChatPage = () => {
         className="flex-1 overflow-y-auto px-3 md:px-4 py-4 md:py-6 space-y-4 md:space-y-6 min-h-0"
         style={{ scrollBehavior: "smooth" }}
       >
+        <span className="sr-only">Hello! I'm CryptoGPT, your crypto assistant.</span>
         {isLoading && messages.length === 0 ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -629,6 +680,7 @@ const ChatPage = () => {
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!input.trim() || isLoading}
+                aria-label="Send message"
                 className={cn(
                   "absolute bottom-2 right-2 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200",
                   input.trim() && !isLoading
@@ -665,7 +717,7 @@ const ChatPage = () => {
                 handleSendMessage(prompt);
                 setShowPrompts(false);
               }}
-              className="w-full p-3 text-left bg-neutral-50 hover:bg-neutral-100 rounded-xl border border-neutral-200 transition-colors"
+              className="w-full cursor-pointer p-3 text-left bg-neutral-50 hover:bg-neutral-100 rounded-xl border border-neutral-200 transition-colors"
             >
               <p className="text-sm font-medium text-neutral-900">{prompt}</p>
             </button>

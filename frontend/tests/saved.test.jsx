@@ -39,24 +39,24 @@ describe("Saved Page", () => {
       expect(screen.getByText("Saved Prompts")).to.exist; // title
 
       // empty page interface
-      expect(screen.getByText("You have no saved prompts")).to.exist;
+      expect(screen.getByText("No saved prompts yet")).to.exist;
       const addToSavedButton = screen.getByRole("button", {
-        name: /Add prompts to Saved/i,
+        name: /Save Your First Prompt/i,
       }); // checks if button exists
       expect(addToSavedButton).toBeInTheDocument();
 
       // check button clicked action - add modal
       await fireEvent.click(addToSavedButton); //that it would trigger a modal then how do i check that??
-      expect(screen.getByText(/Save a Prompt/i)).to.exist;
-      expect(screen.getByText(/Prompt:/i)).to.exist;
+      expect(screen.getByRole("heading", { name: /Save Prompt/i })).to.exist;
+      expect(screen.getByText(/Prompt Text/i)).to.exist;
       const maybeInput = screen.queryByPlaceholderText(
-        /Write your prompt here.../i
+        /Enter your prompt here.../i
       );
       expect(maybeInput).not.toBeNull();
       const cancelButton = screen.getByRole("button", { name: /Cancel/i });
-      const allSaveButtons = screen.getAllByRole("button", { name: /Save/i });
+      const allSaveButtons = screen.getAllByRole("button", { name: /Save Prompt/i });
       const saveButton = allSaveButtons.find(
-        (btn) => btn.textContent === "Save"
+        (btn) => btn.textContent === "Save Prompt"
       );
       expect(cancelButton).toBeInTheDocument();
       expect(saveButton).toBeInTheDocument();

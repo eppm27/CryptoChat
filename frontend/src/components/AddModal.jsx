@@ -9,6 +9,7 @@ import {
 } from "../services/userAPI";
 import { Button, Card } from "./ui/index";
 import { cn } from "../utils/cn";
+import { demoCryptos, isDemoMode } from "../demo/demoStore";
 // Accept userData as a prop
 const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
   const [cryptos, setCryptos] = useState([]);
@@ -195,6 +196,10 @@ const AddModal = ({ closeModal, onSuccess, modalType, userData }) => {
       if (modalType === "wallet" || modalType === "watchlist") {
         setCryptoLoading(true);
         try {
+          if (isDemoMode()) {
+            setCryptos(demoCryptos);
+            return;
+          }
           const res = await fetch("/api/crypto/cryptos");
           if (!res.ok) {
             throw new Error("Failed to fetch cryptocurrency list");

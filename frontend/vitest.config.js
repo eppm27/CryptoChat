@@ -8,7 +8,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "happy-dom",
-    include: ["frontend/**/*.test.{js,ts,jsx,tsx}"],
+    include: ["tests/**/*.test.{js,ts,jsx,tsx}"],
     mockReset: true,
     setupFiles: [resolve(__dirname, "./vitest.setup.js")],
     deps: {

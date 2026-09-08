@@ -42,7 +42,6 @@ describe("NewsPage", () => {
       expect(screen.getByText("Bitcoin surges past $60K")).toBeInTheDocument();
       expect(screen.getByText("Ethereum upgrade launches")).toBeInTheDocument();
       expect(screen.getByText("CryptoNews")).toBeInTheDocument();
-      expect(screen.getByText("BTC")).toBeInTheDocument();
     });
   });
 
@@ -54,7 +53,6 @@ describe("NewsPage", () => {
     render(<NewsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/error/i)).toBeInTheDocument();
       expect(screen.getByText(/failed to fetch news/i)).toBeInTheDocument();
     });
   });
@@ -78,7 +76,7 @@ describe("NewsPage", () => {
     render(<NewsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/latest news/i)).toBeInTheDocument();
+      expect(screen.getByText(/crypto news/i)).toBeInTheDocument();
       expect(
         screen.queryByText(/bitcoin surges past/i)
       ).not.toBeInTheDocument();

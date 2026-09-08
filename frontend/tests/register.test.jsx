@@ -34,20 +34,20 @@ describe("RegisterPage", () => {
       </MemoryRouter>
     );
 
-    fireEvent.change(screen.getByPlaceholderText('First Name'), {
+    fireEvent.change(screen.getByLabelText(/first name/i), {
       target: { value: 'John' },
     });
-    fireEvent.change(screen.getByPlaceholderText('Last Name'), {
+    fireEvent.change(screen.getByLabelText(/last name/i), {
       target: { value: 'Doe' },
     });
 
-    fireEvent.change(screen.getByPlaceholderText("Email"), {
+    fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "john@example.com" },
     });
-    fireEvent.change(screen.getByPlaceholderText("Password"), {
+    fireEvent.change(screen.getByLabelText(/^password$/i), {
       target: { value: "password123" },
     });
-    fireEvent.click(screen.getByText("Sign Up"));
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => {
       expect(registerMock).toHaveBeenCalledWith({
@@ -70,19 +70,19 @@ describe("RegisterPage", () => {
       </MemoryRouter>
     );
 
-    fireEvent.change(screen.getByPlaceholderText('First Name'), {
+    fireEvent.change(screen.getByLabelText(/first name/i), {
       target: { value: 'John' },
     });
-    fireEvent.change(screen.getByPlaceholderText('Last Name'), {
+    fireEvent.change(screen.getByLabelText(/last name/i), {
       target: { value: 'Doe' },
     });
-    fireEvent.change(screen.getByPlaceholderText("Email"), {
+    fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "john@example.com" },
     });
-    fireEvent.change(screen.getByPlaceholderText("Password"), {
+    fireEvent.change(screen.getByLabelText(/^password$/i), {
       target: { value: "password123" },
     });
-    fireEvent.click(screen.getByText("Sign Up"));
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => {
       expect(screen.getByText("User already exists")).toBeInTheDocument();
@@ -96,11 +96,11 @@ describe("RegisterPage", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByPlaceholderText('First Name')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Last Name')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Email")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
-    expect(screen.getByText("Sign Up")).toBeInTheDocument();
+    expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/last name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create account/i })).toBeInTheDocument();
   });
 
   it("does not submit when fields are empty", async () => {
@@ -110,7 +110,7 @@ describe("RegisterPage", () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText("Sign Up"));
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => {
       expect(registerMock).not.toHaveBeenCalled();
@@ -153,7 +153,6 @@ describe("RegisterPage", () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText(/log in/i));
-    expect(navigateMock).toHaveBeenCalledWith("/");
+    expect(screen.getByRole("link", { name: /sign in/i })).toHaveAttribute("href", "/");
   });
 });

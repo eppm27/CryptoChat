@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: cryptochat
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVE_FRONTEND
+        value: "true"
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_URI_CRYPTO
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: COINGECKO_API_KEY
+        sync: false
+      - key: ALPHA_VANTAGE_API_KEY
+        sync: false
+      - key: TWELVE_DATA_API_KEY
+        sync: false
+      - key: RAPIDAPI_KEY
+        sync: false
+      - key: EMAIL_LOGIN
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false

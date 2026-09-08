@@ -37,18 +37,16 @@ describe('Watchlist Page', () => {
       expect(screen.getByText("Watchlist")).to.exist; // title
 
       // empty page interface 
-      expect(screen.getByText("Your watchlist is currently empty")).to.exist; 
-      const addToWatchlistButton = screen.getByRole('button', { name: /Add items to Watchlist/i }); // checks if button exists
+      expect(screen.getByText("Your watchlist is empty")).to.exist;
+      const addToWatchlistButton = screen.getByRole('button', { name: /Add Your First Crypto/i }); // checks if button exists
       expect(addToWatchlistButton).toBeDefined();
 
       // check button clicked action - add modal
       await fireEvent.click(addToWatchlistButton); //that it would trigger a modal then how do i check that?? 
-      expect(screen.getByText(/Add Crypto to Watchlist/i)).to.exist;
-      expect(screen.getByText(/Select Coin:/i)).to.exist;
-      const selectBox = screen.getByText("Choose a crypto");
-      expect(selectBox).toBeDefined();
+      expect(screen.getByRole('heading', { name: /Add to Watchlist/i })).to.exist;
+      expect(screen.getByText(/Search Cryptocurrency/i)).to.exist;
       const cancelButton = screen.getByRole('button', { name: /Cancel/i }); 
-      const saveButton = screen.getByRole('button', { name: /Save/i }); 
+      const saveButton = screen.getByRole('button', { name: /Add to Watchlist/i });
       expect(cancelButton).toBeDefined();
       expect(saveButton).toBeDefined();
 
@@ -110,12 +108,10 @@ describe('Watchlist Page', () => {
 
       // click on add button
       await fireEvent.click(addButton);
-      expect(screen.getByText(/Add Crypto to Watchlist/i)).toBeDefined(); // triggers modal
-      expect(screen.getByText(/Select Coin:/i)).toBeDefined();
-      const selectBox = screen.getByText("Choose a crypto");
-      expect(selectBox).toBeDefined();
+      expect(screen.getByRole('heading', { name: /Add to Watchlist/i })).toBeDefined(); // triggers modal
+      expect(screen.getByText(/Search Cryptocurrency/i)).toBeDefined();
       const cancelButton = screen.getByRole('button', { name: /Cancel/i }); 
-      const saveButton = screen.getByRole('button', { name: /Save/i }); 
+      const saveButton = screen.getByRole('button', { name: /Add to Watchlist/i });
       expect(cancelButton).toBeDefined();
       expect(saveButton).toBeDefined();
     });

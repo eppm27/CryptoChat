@@ -1,9 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { message } from "antd";
 import { Button, Card, Skeleton, PriceChange, Badge } from "../components/ui";
-import CryptoGraph from "../components/CryptoGraph.jsx";
-import RSIGraph from "../components/CryptoIndicatorGraph.jsx";
 import {
   fetchUserData,
   addCryptoToWatchlist,
@@ -12,6 +10,11 @@ import {
 import { fetchCryptoDetailsDatabase } from "../services/cryptoAPI.jsx";
 import { ExternalLink, BookmarkPlus, BookmarkMinus, Clock3 } from "lucide-react";
 import PropTypes from "prop-types";
+import { demoNews, isDemoMode } from "../demo/demoStore";
+
+const CryptoGraph = lazy(() => import("../components/CryptoGraph.jsx"));
+const RSIGraph = lazy(() => import("../components/CryptoIndicatorGraph.jsx"));
+const ChartLoading = () => <Skeleton className="h-80 w-full" />;
 
 const formatCurrency = (value, { compact = false, currency = "USD" } = {}) => {
   if (!Number.isFinite(value)) return "—";
@@ -195,6 +198,13 @@ const CryptoDetailsPage = () => {
         }
 
         try {
+          if (isDemoMode()) {
+            setNews(demoNews.filter((article) =>
+              article.tickers?.includes((cryptoResponse.symbol || "").toUpperCase())
+            ));
+            setIsNewsLoading(false);
+            return;
+          }
           const symbol = (cryptoResponse.symbol || "").toUpperCase();
           if (symbol) {
             const response = await fetch(`/api/news/${symbol}?limit=5`);
@@ -370,6 +380,16 @@ const CryptoDetailsPage = () => {
     return cryptoData.categories.filter(Boolean).slice(0, 8);
   }, [cryptoData]);
 
+  const websiteLinks = useMemo(
+    () => mapWebsiteLinks(cryptoData?.homepageLink),
+    [cryptoData]
+  );
+
+  const communityLinks = useMemo(
+    () => mapCommunityLinks(cryptoData?.communityLinks),
+    [cryptoData]
+  );
+
   if (isCryptoLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50/30">
@@ -414,19 +434,7 @@ const CryptoDetailsPage = () => {
     cryptoData.price_change_percentage_24h_in_currency
   );
   const priceChange24h = Number.parseFloat(cryptoData.price_change_24h);
-// eslint-disable-next-line react-hooks/rules-of-hooks
-const websiteLinks = useMemo(
-  () => mapWebsiteLinks(cryptoData?.homepageLink),
-  [cryptoData]
-);
-
-// eslint-disable-next-line react-hooks/rules-of-hooks
-const communityLinks = useMemo(
-  () => mapCommunityLinks(cryptoData?.communityLinks),
-  [cryptoData]
-);
-
-const primaryWebsite = websiteLinks[0]?.href;
+  const primaryWebsite = websiteLinks[0]?.href;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50/30">
@@ -531,7 +539,9 @@ const primaryWebsite = websiteLinks[0]?.href;
               {cryptoData.name} Price Chart
             </h2>
           </div>
-          <CryptoGraph cryptoId={cryptoId} />
+          <Suspense fallback={<ChartLoading />}>
+            <CryptoGraph cryptoId={cryptoId} />
+          </Suspense>
         </Card>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -648,7 +658,9 @@ const primaryWebsite = websiteLinks[0]?.href;
             </h2>
           </div>
           <div className="rounded-2xl border border-neutral-100 bg-white/70 p-4">
-            <RSIGraph cryptoId={cryptoData.id} />
+            <Suspense fallback={<ChartLoading />}>
+              <RSIGraph cryptoId={cryptoData.id} />
+            </Suspense>
           </div>
         </Card>
 

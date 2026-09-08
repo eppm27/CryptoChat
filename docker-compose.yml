@@ -4,11 +4,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - '5173:5173'
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: ['npm', 'run', 'dev', '--', '--host', '0.0.0.0']
+      - '5173:80'
+    depends_on:
+      - backend
 
   backend:
     build: ./backend
@@ -27,11 +25,13 @@ services:
       - TWELVE_DATA_API_KEY
       - RAPIDAPI_KEY
       - ALPHA_VANTAGE_IND_KEY
+      - FRONTEND_URL=http://localhost:5173
     volumes:
       - ./backend:/app
       - /app/node_modules
     depends_on:
       - mongo
+    restart: unless-stopped
 
   mongo:
     image: mongo:6
@@ -39,6 +39,7 @@ services:
       - '27017:27017' # Optional (only if accessing DB externally)
     volumes:
       - mongo-data:/data/db
+    restart: unless-stopped
 
 volumes:
   mongo-data:

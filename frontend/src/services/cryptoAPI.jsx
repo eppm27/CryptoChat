@@ -1,6 +1,14 @@
 import axios from "axios";
+import { demoCryptos, isDemoMode } from "../demo/demoStore";
 
 export const fetchCryptoDetailsDatabase = async (cryptos, type) => {
+  if (isDemoMode()) {
+    const requested = Array.isArray(cryptos) ? cryptos : String(cryptos || "").split(",");
+    const matches = demoCryptos.filter((crypto) => requested.length === 0 || requested.includes(crypto.id));
+    return ["details", "cryptoDetails"].includes(type)
+      ? matches[0] || demoCryptos[0]
+      : matches;
+  }
   try {
     console.log("cryptoAPI: Preparing API call with params:", { cryptos, type });
     const params = {};
@@ -23,6 +31,14 @@ export const fetchCryptoDetailsDatabase = async (cryptos, type) => {
 };
 
 export const fetchCryptoGraphData = async (cryptoId, selectedPeriod = "7") => {
+  if (isDemoMode()) {
+    const days = Number(selectedPeriod) || 7;
+    const base = demoCryptos.find((crypto) => crypto.id === cryptoId)?.current_price || 100;
+    return Array.from({ length: Math.min(days, 30) }, (_, index) => ({
+      timestamp: new Date(Date.now() - (days - index) * 86400000).toISOString(),
+      price: base * (0.94 + index * 0.004 + Math.sin(index) * 0.012),
+    }));
+  }
   try {
     const response = await axios.get(`/api/crypto/${cryptoId}/graph-details`, {
       params: {
@@ -38,6 +54,7 @@ export const fetchCryptoGraphData = async (cryptoId, selectedPeriod = "7") => {
 };
 
 export const fetchCryptoIndicatorGraph = async (cryptoId) => {
+  if (isDemoMode()) return [];
   try {
     const response = await axios.get(
       `/api/crypto/${cryptoId}/indicator-graph/rsi`
